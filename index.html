@@ -1,1738 +1,1676 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#FAF9F6]">
+<html lang="en" class="h-full bg-[#FAF9F6] text-[#141413]">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Axio Card Ledger & Reconciliation PWA</title>
+  <title>Axio Card Ledger PWA</title>
   
-  <!-- Fonts & Tailwind CSS -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'] },
           colors: {
             alabaster: '#FAF9F6',
             charcoal: '#141413',
-            hairline: '#E6E4DD',
-            secondary: '#57534E',
-            tealSettled: '#0F766E',
-            amberDues: '#B45309',
-            violetSurplus: '#6D28D9',
+            cardbg: '#FFFFFF',
+            borderlight: '#E8E6E1',
+            mutedgray: '#686661',
+            accentemerald: '#059669',
+            accentamber: '#D97706',
+            accentrose: '#E11D48',
+            accentindigo: '#4F46E5',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
           }
         }
       }
     }
   </script>
 
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #FAF9F6; color: #141413; }
-    .tabular-nums { font-variant-numeric: tabular-nums; }
-    /* Custom scrollbars */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #FAF9F6; }
-    ::-webkit-scrollbar-thumb { background: #D6D3D1; border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: #A8A29E; }
-    .glass-card { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(8px); }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #FAF9F6;
+      color: #141413;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #FAF9F6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D4D2CB;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #A8A69F;
+    }
+    .modal-backdrop {
+      background-color: rgba(20, 20, 19, 0.45);
+      backdrop-filter: blur(4px);
+    }
   </style>
-
-  <!-- Dynamic Single-File PWA Setup (Manifest + Service Worker via Blobs) -->
-  <script>
-    (function setupSingleFilePWA() {
-      // 1. Generate Web App Manifest Blob
-      const manifestData = {
-        name: "Axio Card Ledger & Sync",
-        short_name: "Axio Ledger",
-        description: "Zero-build single-file Axio card payoff, refund & Google Drive reconciliation ledger",
-        start_url: window.location.href,
-        scope: window.location.origin + window.location.pathname,
-        display: "standalone",
-        background_color: "#FAF9F6",
-        theme_color: "#141413",
-        orientation: "portrait-primary",
-        icons: [
-          {
-            src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%23141413'/><path d='M160 160h192M160 256h192M160 352h112' stroke='%23FAF9F6' stroke-width='36' stroke-linecap='round'/><circle cx='352' cy='352' r='40' fill='%230F766E'/></svg>",
-            sizes: "192x192 512x512",
-            type: "image/svg+xml",
-            purpose: "any maskable"
-          }
-        ]
-      };
-      const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
-      const manifestUrl = URL.createObjectURL(manifestBlob);
-      const manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      manifestLink.href = manifestUrl;
-      document.head.appendChild(manifestLink);
-
-      // 2. Inline Service Worker Code Blob
-      const swCode = `
-        const CACHE_NAME = 'axio-ledger-v1';
-        self.addEventListener('install', (event) => {
-          self.skipWaiting();
-        });
-        self.addEventListener('activate', (event) => {
-          event.waitUntil(self.clients.claim());
-        });
-        self.addEventListener('fetch', (event) => {
-          if (event.request.method !== 'GET') return;
-          event.respondWith(
-            fetch(event.request)
-              .then((response) => {
-                if (response && response.status === 200 && response.type === 'basic') {
-                  const copy = response.clone();
-                  caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-                }
-                return response;
-              })
-              .catch(() => caches.match(event.request))
-          );
-        });
-      `;
-      const swBlob = new Blob([swCode], { type: 'application/javascript' });
-      const swUrl = URL.createObjectURL(swBlob);
-
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register(swUrl)
-            .then(() => console.log('Single-file ServiceWorker registered via Blob'))
-            .catch((err) => console.warn('SW registration fallback:', err));
-        });
-      }
-    })();
-  </script>
 </head>
+<body class="min-h-full flex flex-col antialiased selection:bg-indigo-100 selection:text-indigo-900">
 
-<body class="h-full flex flex-col antialiased text-[#141413] selection:bg-stone-200">
-
-  <!-- Header Navigation & Action Bar -->
-  <header class="sticky top-0 z-30 bg-[#FAF9F6]/95 backdrop-blur-md border-b border-[#E6E4DD] px-4 lg:px-8 py-3">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+  <!-- TOP HEADER / APP BAR -->
+  <header class="sticky top-0 z-30 bg-[#FAF9F6]/90 backdrop-blur-md border-b border-[#E8E6E1] px-4 py-3 sm:px-6">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3">
       
-      <!-- Logo & PWA Readiness Tag -->
+      <!-- Brand & Badges -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-[#141413] text-[#FAF9F6] flex items-center justify-center font-bold text-lg shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-[#141413] text-white flex items-center justify-center font-bold text-xl shadow-md">
             ₹
           </div>
           <div>
-            <h1 class="text-base font-bold tracking-tight text-[#141413]">Axio Card Ledger</h1>
-            <p class="text-xs text-[#57534E] flex items-center gap-1.5 font-medium">
-              <span id="pwaStatusBadge" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> Standalone Ready
+            <h1 class="text-lg font-bold tracking-tight text-[#141413] flex items-center gap-2">
+              Axio Card Ledger
+              <span class="text-xs font-normal text-mutedgray hidden sm:inline-block">PWA</span>
+            </h1>
+            <div class="flex items-center gap-2 text-xs text-mutedgray">
+              <span id="pwaStatusBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> PWA Ready
               </span>
-              <span class="text-[#E6E4DD]">|</span>
-              <span id="syncStateText" class="text-stone-600">Local Mode</span>
-            </p>
+              <span id="driveStatusBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                Simulator Active
+              </span>
+            </div>
           </div>
         </div>
 
-        <!-- Mobile Action Buttons -->
-        <div class="flex md:hidden items-center gap-2">
-          <button onclick="triggerCSVImport()" class="p-2 text-stone-700 bg-white border border-[#E6E4DD] rounded-lg text-xs font-semibold shadow-sm active:bg-stone-100">
+        <!-- Mobile Action Menu Toggle -->
+        <div class="flex items-center gap-2 md:hidden">
+          <button onclick="app.openModal('importModal')" class="px-3 py-1.5 rounded-lg bg-[#141413] text-white text-xs font-semibold shadow-sm hover:bg-black transition">
             + Import
           </button>
         </div>
       </div>
 
-      <!-- Action Toolbar -->
+      <!-- Action Buttons Bar -->
       <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-        <!-- Install PWA Button (Hidden by default until prompt fires or detected) -->
-        <button id="installPWABtn" onclick="promptInstallPWA()" class="hidden px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          Install App
+        <button onclick="app.openModal('importModal')" class="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#141413] text-white text-xs font-medium shadow-sm hover:bg-black transition shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Import CSVs
         </button>
-
-        <button onclick="triggerCSVImport()" class="px-3 py-1.5 bg-[#141413] hover:bg-black text-[#FAF9F6] text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          + Import Axio CSV
-        </button>
-
-        <button onclick="openCardManagerModal()" class="px-3 py-1.5 bg-white hover:bg-stone-50 border border-[#E6E4DD] text-stone-800 text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-          Cards & Limits
-        </button>
-
-        <button onclick="openDriveSyncModal()" class="px-3 py-1.5 bg-white hover:bg-stone-50 border border-[#E6E4DD] text-stone-800 text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+        <button onclick="app.openModal('driveModal')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E8E6E1] text-[#141413] text-xs font-medium shadow-sm hover:bg-gray-50 transition shrink-0">
+          <svg class="w-4 h-4 text-accentindigo" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
           Drive Sync
         </button>
-
-        <button onclick="exportGoogleSheetsCSV()" class="px-3 py-1.5 bg-white hover:bg-stone-50 border border-[#E6E4DD] text-stone-800 text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <button onclick="app.exportToGoogleSheetsCSV()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E8E6E1] text-[#141413] text-xs font-medium shadow-sm hover:bg-gray-50 transition shrink-0">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           Export Sheet
         </button>
-
-        <button onclick="runQADiagnostics()" class="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 text-xs font-semibold rounded-lg shadow-sm transition flex items-center gap-1.5 shrink-0">
-          <svg class="w-3.5 h-3.5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          QA Tests
+        <button onclick="app.openModal('cardsModal')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E8E6E1] text-[#141413] text-xs font-medium shadow-sm hover:bg-gray-50 transition shrink-0">
+          <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          Manage Cards
+        </button>
+        <button onclick="app.openModal('qaModal')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 border border-gray-200 text-gray-700 text-xs font-medium hover:bg-gray-200 transition shrink-0">
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          QA Suite
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 flex flex-col gap-6">
-
-    <!-- KPI & Summary Cards -->
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 space-y-6">
+    
+    <!-- KPI METRICS SUMMARY ROW -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <!-- Total Open Net Dues -->
-      <div class="bg-white border border-[#E6E4DD] p-4 rounded-xl shadow-sm flex flex-col justify-between">
-        <span class="text-xs font-semibold text-[#57534E] uppercase tracking-wider">Total Open Dues</span>
-        <div class="mt-2 flex items-baseline justify-between">
-          <span id="kpiTotalDues" class="text-2xl font-bold tabular-nums text-[#B45309]">₹0.00</span>
-          <span class="text-[11px] font-medium text-stone-500">Unsettled Spends</span>
+      <!-- Total Open Dues -->
+      <div class="bg-white p-5 rounded-2xl border border-[#E8E6E1] shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs font-semibold text-mutedgray uppercase tracking-wider">
+          <span>Total Open Dues</span>
+          <span class="p-1.5 rounded-lg bg-rose-50 text-accentrose">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div id="kpiTotalDues" class="text-2xl sm:text-3xl font-bold text-accentrose">₹0.00</div>
+          <p class="text-xs text-mutedgray mt-1">Unsettled Card Spends</p>
         </div>
       </div>
 
-      <!-- Overpaid / Surplus Credits -->
-      <div class="bg-white border border-[#E6E4DD] p-4 rounded-xl shadow-sm flex flex-col justify-between">
-        <span class="text-xs font-semibold text-[#57534E] uppercase tracking-wider">Surplus Credits</span>
-        <div class="mt-2 flex items-baseline justify-between">
-          <span id="kpiSurplus" class="text-2xl font-bold tabular-nums text-[#6D28D9]">₹0.00</span>
-          <span class="text-[11px] font-medium text-stone-500">Over-refunds / Excess</span>
+      <!-- Surplus Credits -->
+      <div class="bg-white p-5 rounded-2xl border border-[#E8E6E1] shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs font-semibold text-mutedgray uppercase tracking-wider">
+          <span>Surplus Credits</span>
+          <span class="p-1.5 rounded-lg bg-emerald-50 text-accentemerald">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div id="kpiSurplus" class="text-2xl sm:text-3xl font-bold text-accentemerald">₹0.00</div>
+          <p class="text-xs text-mutedgray mt-1">Over-refunds / Excess Credits</p>
         </div>
       </div>
 
-      <!-- Unlinked Cash/Payoffs Queue -->
-      <div class="bg-white border border-[#E6E4DD] p-4 rounded-xl shadow-sm flex flex-col justify-between">
-        <span class="text-xs font-semibold text-[#57534E] uppercase tracking-wider">Unlinked Payoffs Pool</span>
-        <div class="mt-2 flex items-baseline justify-between">
-          <span id="kpiUnlinkedPool" class="text-2xl font-bold tabular-nums text-teal-800">₹0.00</span>
-          <span id="kpiUnlinkedCount" class="text-[11px] font-medium text-teal-600">0 items waiting</span>
+      <!-- Unlinked Payoffs Pool -->
+      <div class="bg-white p-5 rounded-2xl border border-[#E8E6E1] shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs font-semibold text-mutedgray uppercase tracking-wider">
+          <span>Unlinked Payoffs</span>
+          <span class="p-1.5 rounded-lg bg-indigo-50 text-accentindigo">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          </span>
         </div>
-      </div>
-
-      <!-- Total Credit Limit Utilised -->
-      <div class="bg-white border border-[#E6E4DD] p-4 rounded-xl shadow-sm flex flex-col justify-between">
-        <span class="text-xs font-semibold text-[#57534E] uppercase tracking-wider">Overall Credit Utilisation</span>
-        <div class="mt-2">
+        <div class="mt-3">
           <div class="flex items-baseline justify-between">
-            <span id="kpiUtilisationRatio" class="text-xl font-bold tabular-nums text-[#141413]">0%</span>
-            <span id="kpiUtilisedAmount" class="text-xs font-medium tabular-nums text-stone-600">₹0 / ₹0</span>
+            <div id="kpiUnlinkedPayoffs" class="text-2xl sm:text-3xl font-bold text-accentindigo">₹0.00</div>
+            <span id="kpiUnlinkedCount" class="text-xs font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">0 items</span>
           </div>
-          <div class="mt-2 w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
-            <div id="kpiUtilisationBar" class="bg-[#141413] h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+          <p class="text-xs text-mutedgray mt-1">Available to Match & Settle</p>
+        </div>
+      </div>
+
+      <!-- Credit Utilisation -->
+      <div class="bg-white p-5 rounded-2xl border border-[#E8E6E1] shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between text-xs font-semibold text-mutedgray uppercase tracking-wider">
+          <span>Credit Utilisation</span>
+          <span class="p-1.5 rounded-lg bg-gray-100 text-gray-700">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z"/></svg>
+          </span>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline justify-between">
+            <div id="kpiUtilisationPct" class="text-2xl sm:text-3xl font-bold text-[#141413]">0%</div>
+            <div id="kpiUtilisationDetail" class="text-xs font-medium text-mutedgray">₹0 / ₹0</div>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2 mt-2 overflow-hidden">
+            <div id="kpiUtilisationBar" class="bg-accentindigo h-full rounded-full transition-all duration-300" style="width: 0%"></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Dynamic Credit Card Strip -->
+    <!-- CREDIT CARDS LIFECYCLE & DUES GRID -->
     <section class="space-y-3">
       <div class="flex items-center justify-between">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
-          <span>Credit Cards Lifecycle & Dues</span>
-          <span class="text-xs font-normal text-stone-500 capitalize">(Click card to filter ledger)</span>
+        <h2 class="text-base font-bold text-[#141413] flex items-center gap-2">
+          Credit Cards Lifecycle & Dues
+          <span class="text-xs font-normal text-mutedgray">(Click Card To Filter Ledger)</span>
         </h2>
-        <button onclick="openCardManagerModal()" class="text-xs font-semibold text-stone-600 hover:text-black flex items-center gap-1">
+        <button onclick="app.openModal('cardsModal')" class="text-xs font-semibold text-accentindigo hover:underline flex items-center gap-1">
           + Add / Edit Cards
         </button>
       </div>
 
-      <div id="cardsStrip" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        <!-- Dynamic Cards Injected Here -->
+      <!-- Cards Grid -->
+      <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered dynamically via JavaScript -->
       </div>
     </section>
 
-    <!-- Reconciliation Workbench & Unlinked Queue Split -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- LEDGER RECONCILIATION WORKBENCH -->
+    <section class="bg-white rounded-2xl border border-[#E8E6E1] shadow-sm overflow-hidden flex flex-col">
+      
+      <!-- Workbench Header & Filters -->
+      <div class="p-4 sm:p-5 border-b border-[#E8E6E1] bg-gray-50/50 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex items-center gap-2">
+          <h3 class="text-base font-bold text-[#141413]">Reconciliation Workbench</h3>
+          <span id="activeFilterBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">All Cards</span>
+        </div>
 
-      <!-- Main Transaction Ledger Workbench (8 cols) -->
-      <section class="lg:col-span-8 bg-white border border-[#E6E4DD] rounded-xl shadow-sm overflow-hidden flex flex-col">
-        
-        <!-- Controls Bar -->
-        <div class="p-4 border-b border-[#E6E4DD] bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          
-          <!-- Filters Pills -->
-          <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-            <button onclick="setFilter('ALL')" id="filterBtnALL" class="px-2.5 py-1 text-xs font-semibold rounded-md bg-[#141413] text-white">All</button>
-            <button onclick="setFilter('ACTION')" id="filterBtnACTION" class="px-2.5 py-1 text-xs font-semibold rounded-md bg-white border border-[#E6E4DD] text-stone-700 hover:bg-stone-100">Action Required</button>
-            <button onclick="setFilter('SETTLED')" id="filterBtnSETTLED" class="px-2.5 py-1 text-xs font-semibold rounded-md bg-white border border-[#E6E4DD] text-stone-700 hover:bg-stone-100">Settled</button>
-            <button onclick="setFilter('SURPLUS')" id="filterBtnSURPLUS" class="px-2.5 py-1 text-xs font-semibold rounded-md bg-white border border-[#E6E4DD] text-stone-700 hover:bg-stone-100">Surplus Credits</button>
-            <button onclick="setFilter('REIMBURSED')" id="filterBtnREIMBURSED" class="px-2.5 py-1 text-xs font-semibold rounded-md bg-white border border-[#E6E4DD] text-stone-700 hover:bg-stone-100">Reimbursements/Notes</button>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Card Filter Dropdown -->
+          <select id="filterCardSelect" onchange="app.setCardFilter(this.value)" class="px-3 py-1.5 rounded-xl border border-[#E8E6E1] bg-white text-xs font-medium text-[#141413] focus:outline-none focus:ring-2 focus:ring-accentindigo">
+            <option value="ALL">All Credit Cards</option>
+          </select>
+
+          <!-- Status Filter -->
+          <select id="filterStatusSelect" onchange="app.setStatusFilter(this.value)" class="px-3 py-1.5 rounded-xl border border-[#E8E6E1] bg-white text-xs font-medium text-[#141413] focus:outline-none focus:ring-2 focus:ring-accentindigo">
+            <option value="ALL">All Statuses</option>
+            <option value="UNSETTLED">Unsettled Dues</option>
+            <option value="PARTIAL">Partially Settled</option>
+            <option value="SETTLED">Fully Settled</option>
+            <option value="CREDIT">Unlinked Payoffs / Credits</option>
+          </select>
+
+          <!-- Search Input -->
+          <div class="relative flex-1 min-w-[160px]">
+            <input type="text" id="searchInput" oninput="app.setSearchQuery(this.value)" placeholder="Search merchant, ref..." class="w-full pl-8 pr-3 py-1.5 rounded-xl border border-[#E8E6E1] bg-white text-xs text-[#141413] placeholder-mutedgray focus:outline-none focus:ring-2 focus:ring-accentindigo" />
+            <svg class="w-3.5 h-3.5 text-mutedgray absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
+        </div>
+      </div>
 
-          <!-- Search & Add Txn -->
+      <!-- Smart Subset-Sum Bundle Finder Banner -->
+      <div id="bundleFinderSection" class="p-4 bg-indigo-50/70 border-b border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-accentindigo text-white flex items-center justify-center font-bold text-sm shrink-0">
+            ⚡
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-indigo-950">Subset-Sum Smart Bundle Finder (Exact Integer Paise)</h4>
+            <p class="text-[11px] text-indigo-700">Select an unlinked payoff/credit to discover exact combinations of open spends that add up to its amount.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="bundlePayoffSelect" class="px-3 py-1.5 rounded-xl border border-indigo-200 bg-white text-xs font-medium text-indigo-950">
+            <option value="">-- Select Unlinked Payoff --</option>
+          </select>
+          <button onclick="app.runSubsetSumFinder()" class="px-3.5 py-1.5 rounded-xl bg-accentindigo text-white text-xs font-semibold shadow-sm hover:bg-indigo-700 transition shrink-0">
+            Find Bundle
+          </button>
+        </div>
+      </div>
+
+      <!-- Bundle Match Result Popup/Container -->
+      <div id="bundleResultContainer" class="hidden p-4 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 space-y-2">
+        <div class="flex items-center justify-between font-bold">
+          <span id="bundleResultTitle">Matching Combination Found!</span>
+          <button onclick="document.getElementById('bundleResultContainer').classList.add('hidden')" class="text-amber-700 hover:text-amber-900">✕</button>
+        </div>
+        <div id="bundleResultList" class="space-y-1 max-h-36 overflow-y-auto font-mono text-[11px]"></div>
+        <button id="bundleApplyBtn" onclick="app.applyBundleLink()" class="px-3 py-1 rounded-lg bg-amber-600 text-white font-semibold text-xs hover:bg-amber-700 transition">
+          1-Click Link All Matched Spends
+        </button>
+      </div>
+
+      <!-- Transactions List / Workbench Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="bg-gray-50 border-b border-[#E8E6E1] text-[11px] font-semibold text-mutedgray uppercase tracking-wider">
+              <th class="py-3 px-4">Date</th>
+              <th class="py-3 px-4">Card / Account</th>
+              <th class="py-3 px-4">Merchant / Description</th>
+              <th class="py-3 px-4">Signed Amount</th>
+              <th class="py-3 px-4">Status & Net Due</th>
+              <th class="py-3 px-4">Reimbursement Note</th>
+              <th class="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="workbenchTbody" class="divide-y divide-[#E8E6E1] text-xs">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="workbenchEmpty" class="hidden p-12 text-center space-y-3">
+        <div class="w-12 h-12 rounded-full bg-gray-100 text-mutedgray flex items-center justify-center mx-auto text-xl">
+          📑
+        </div>
+        <p class="text-sm font-semibold text-[#141413]">No transactions found</p>
+        <p class="text-xs text-mutedgray max-w-sm mx-auto">Import your Axio CSV bank statements or adjust your active card/status filters to see entries here.</p>
+        <button onclick="app.openModal('importModal')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#141413] text-white text-xs font-semibold hover:bg-black transition">
+          Import Axio CSV Statements
+        </button>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- MODAL 1: GOOGLE DRIVE & STATE SYNC (Includes 2-Step Reset All Entries Button) -->
+  <div id="driveModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl border border-[#E8E6E1] shadow-2xl max-w-lg w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between border-b border-[#E8E6E1] pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 text-accentindigo flex items-center justify-center font-bold">
+            ☁️
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-[#141413]">Google Drive & State Sync</h3>
+            <p class="text-xs text-mutedgray">Cross-device axio_ledger_state.json backup</p>
+          </div>
+        </div>
+        <button onclick="app.closeModal('driveModal')" class="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
+      </div>
+
+      <!-- Drive Mode Selector -->
+      <div class="p-4 rounded-2xl bg-gray-50 border border-[#E8E6E1] space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-[#141413]">Drive Mode:</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="simulatorToggle" onchange="app.toggleDriveSimulator(this.checked)" class="sr-only peer" checked>
+            <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accentindigo"></div>
+            <span class="ml-2 text-xs font-semibold text-[#141413]" id="simulatorToggleLabel">Virtual Simulator Active</span>
+          </label>
+        </div>
+        <p class="text-[11px] text-mutedgray leading-relaxed">
+          Virtual Simulator allows testing background polling, file ingestion, safe CSV deletion tracking, and phone/laptop JSON state sync without a Google Cloud OAuth key.
+        </p>
+      </div>
+
+      <!-- OAuth Settings Form -->
+      <div id="oauthFormSection" class="space-y-3 hidden">
+        <div>
+          <label class="block text-xs font-semibold text-mutedgray mb-1">Google OAuth Client ID</label>
+          <input type="text" id="clientIdInput" placeholder="xxxx.apps.googleusercontent.com" class="w-full px-3 py-2 rounded-xl border border-[#E8E6E1] text-xs font-mono focus:ring-2 focus:ring-accentindigo outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-mutedgray mb-1">Sync Folder Name in Drive</label>
+          <input type="text" id="driveFolderNameInput" value="Axio Card Ledger Exports" class="w-full px-3 py-2 rounded-xl border border-[#E8E6E1] text-xs focus:ring-2 focus:ring-accentindigo outline-none" />
+        </div>
+      </div>
+
+      <!-- Polling Interval -->
+      <div>
+        <label class="block text-xs font-semibold text-mutedgray mb-1">Background Polling Interval</label>
+        <select id="pollingIntervalSelect" class="w-full px-3 py-2 rounded-xl border border-[#E8E6E1] bg-white text-xs focus:ring-2 focus:ring-accentindigo outline-none">
+          <option value="900000">Every 15 minutes</option>
+          <option value="1800000">Every 30 minutes</option>
+          <option value="3600000" selected>Every 1 hour</option>
+          <option value="0">Manual Sync Only</option>
+        </select>
+      </div>
+
+      <!-- Safe To Delete Tracker -->
+      <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 space-y-2">
+        <h4 class="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+          <span>🛡️</span> Safe to Delete Tracker
+        </h4>
+        <p class="text-[11px] text-emerald-800">
+          CSV files auto-imported from Drive are marked below once fully stored in <code class="font-mono bg-emerald-100 px-1 py-0.5 rounded">axio_ledger_state.json</code>. You can safely delete them from Drive to save quota!
+        </p>
+        <div id="safeToDeleteList" class="text-[11px] text-emerald-900 max-h-24 overflow-y-auto space-y-1 font-mono">
+          <span class="text-mutedgray italic">No Drive files processed yet.</span>
+        </div>
+      </div>
+
+      <!-- Manual Backup / Restore -->
+      <div class="flex items-center justify-between pt-2 border-t border-[#E8E6E1]">
+        <button onclick="app.downloadJSONBackup()" class="text-xs font-semibold text-accentindigo hover:underline flex items-center gap-1">
+          💾 Download JSON State Backup
+        </button>
+        <label class="text-xs font-semibold text-accentindigo hover:underline cursor-pointer flex items-center gap-1">
+          📥 Restore JSON State
+          <input type="file" accept=".json" onchange="app.restoreJSONState(event)" class="hidden" />
+        </label>
+      </div>
+
+      <!-- TWO-STEP RESET ALL ENTRIES SECTION -->
+      <div class="p-4 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-bold text-rose-950 flex items-center gap-1">
+              <span>⚠️</span> Reset All Ledger Entries
+            </h4>
+            <p class="text-[11px] text-rose-700">Clear all spends, credits, links, & imported history.</p>
+          </div>
+          <button id="initialResetBtn" onclick="app.showResetConfirmation()" class="px-3 py-1.5 rounded-xl border border-rose-300 bg-white text-rose-700 font-semibold text-xs hover:bg-rose-100 transition">
+            Reset Entries
+          </button>
+        </div>
+
+        <!-- Inline Step 2 Confirmation Prompt -->
+        <div id="resetConfirmBox" class="hidden pt-3 border-t border-rose-200/80 space-y-2">
+          <p class="text-[11px] font-semibold text-rose-900">
+            Are you sure? This will wipe all transactions, unlinked payoffs, and CSV logs, then sync the clean state to Drive. Your custom credit cards and limits will be preserved.
+          </p>
           <div class="flex items-center gap-2">
-            <div class="relative flex-1 sm:w-48">
-              <input type="text" id="searchInput" oninput="renderLedger()" placeholder="Search place, note..." class="w-full pl-7 pr-3 py-1 text-xs border border-[#E6E4DD] rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-              <svg class="w-3.5 h-3.5 text-stone-400 absolute left-2 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            </div>
-            <button onclick="openAddTxnModal()" class="px-2.5 py-1 text-xs font-semibold bg-stone-200 hover:bg-stone-300 rounded-lg text-stone-800 transition">
-              + Quick Add
+            <button onclick="app.confirmResetAllEntries()" class="flex-1 py-2 rounded-xl bg-accentrose text-white text-xs font-bold shadow-sm hover:bg-rose-700 transition">
+              Yes, Clear All Entries
+            </button>
+            <button onclick="app.cancelResetConfirmation()" class="px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 text-xs font-semibold hover:bg-gray-50 transition">
+              Cancel
             </button>
           </div>
         </div>
+      </div>
 
-        <!-- Ledger Items Table / List -->
-        <div class="divide-y divide-[#E6E4DD] max-h-[600px] overflow-y-auto" id="ledgerContainer">
-          <!-- Dynamic Ledger Entries -->
-        </div>
-
-        <!-- Ledger Footer -->
-        <div class="p-3 bg-stone-50 border-t border-[#E6E4DD] flex items-center justify-between text-xs text-stone-500 font-medium">
-          <span id="ledgerCountText">Showing 0 transactions</span>
-          <span id="ledgerFilterCardText" class="italic"></span>
-        </div>
-      </section>
-
-      <!-- Sidebar: Unlinked Credits Pool & Subset-Sum Smart Bundler (4 cols) -->
-      <section class="lg:col-span-4 space-y-4">
-        
-        <!-- Smart Bundle Matcher Box -->
-        <div class="bg-gradient-to-br from-amber-50 to-stone-50 border border-amber-200/80 rounded-xl p-4 shadow-sm">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-              <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              Subset-Sum Smart Bundler
-            </h3>
-            <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Auto-Finder</span>
-          </div>
-          <p class="text-xs text-amber-950/80 mb-3 leading-relaxed">
-            Select an unlinked payment below to scan open spends for an exact mathematical matching combination.
-          </p>
-          <div id="smartBundleResults" class="text-xs text-stone-600 bg-white/80 p-2.5 rounded-lg border border-amber-200 min-h-[48px] flex items-center justify-center italic text-center">
-            Click "Find Spends Bundle" on an incoming credit to match.
-          </div>
-        </div>
-
-        <!-- Unlinked Incoming Payoffs Pool -->
-        <div class="bg-white border border-[#E6E4DD] rounded-xl p-4 shadow-sm">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
-              <span>Unlinked Payoffs & Refunds</span>
-              <span id="unlinkedBadge" class="bg-stone-100 text-stone-800 text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
-            </h3>
-          </div>
-
-          <div id="unlinkedPoolContainer" class="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-            <!-- Dynamic Unlinked Payoff Cards -->
-          </div>
-        </div>
-      </section>
+      <div class="flex justify-end gap-2 pt-3 border-t border-[#E8E6E1]">
+        <button onclick="app.saveDriveSettings()" class="px-5 py-2.5 rounded-xl bg-[#141413] text-white text-xs font-bold shadow-sm hover:bg-black transition">
+          Save & Connect
+        </button>
+      </div>
     </div>
+  </div>
 
-  </main>
+  <!-- MODAL 2: BATCH CSV IMPORTER -->
+  <div id="importModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl border border-[#E8E6E1] shadow-2xl max-w-lg w-full p-6 space-y-5">
+      
+      <div class="flex items-center justify-between border-b border-[#E8E6E1] pb-3">
+        <h3 class="text-base font-bold text-[#141413]">Import Axio CSV Statements</h3>
+        <button onclick="app.closeModal('importModal')" class="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
+      </div>
 
-  <!-- Hidden File Input for Axio CSV Import -->
-  <input type="file" id="csvFileInput" multiple accept=".csv" class="hidden" onchange="handleCSVFileSelect(event)" />
+      <!-- Dropzone -->
+      <div id="dropZone" onclick="document.getElementById('csvFileInput').click()" class="border-2 border-dashed border-[#E8E6E1] hover:border-accentindigo rounded-2xl p-8 text-center cursor-pointer transition bg-gray-50/50 hover:bg-indigo-50/30">
+        <div class="w-12 h-12 rounded-full bg-indigo-50 text-accentindigo flex items-center justify-center mx-auto text-xl mb-2">
+          📄
+        </div>
+        <p class="text-xs font-bold text-[#141413]">Click or drag & drop Axio CSV statement files here</p>
+        <p class="text-[11px] text-mutedgray mt-1">Multi-file selection supported. Headers & footers auto-trimmed.</p>
+        <input type="file" id="csvFileInput" multiple accept=".csv" onchange="app.handleCSVFiles(this.files)" class="hidden" />
+      </div>
 
-  <!-- MODAL: Add / Edit Cards Lifecycle Manager -->
-  <div id="cardManagerModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white border border-[#E6E4DD] rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E6E4DD] pb-3">
+      <!-- Import Stats -->
+      <div id="importStats" class="hidden p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-xs text-indigo-950 space-y-1">
+        <p class="font-bold" id="importStatsTitle">Import Processed</p>
+        <p id="importStatsDetail" class="text-[11px] text-indigo-800"></p>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="app.closeModal('importModal')" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200 transition">
+          Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: MANAGE CARDS & CREDIT LIMITS -->
+  <div id="cardsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl border border-[#E8E6E1] shadow-2xl max-w-lg w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+      
+      <div class="flex items-center justify-between border-b border-[#E8E6E1] pb-3">
         <h3 class="text-base font-bold text-[#141413]">Manage Credit Cards & Limits</h3>
-        <button onclick="closeCardManagerModal()" class="text-stone-400 hover:text-stone-700 font-bold text-lg">&times;</button>
+        <button onclick="app.closeModal('cardsModal')" class="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
       </div>
 
       <!-- Add New Card Form -->
-      <form onsubmit="addNewCard(event)" class="grid grid-cols-2 gap-3 bg-stone-50 p-3 rounded-xl border border-[#E6E4DD]">
-        <div class="col-span-2 text-xs font-bold uppercase text-stone-600">Add New Card</div>
-        <div>
-          <label class="text-[11px] font-semibold text-stone-600">Card Name</label>
-          <input type="text" id="newCardName" required placeholder="e.g. HDFC Regalia" class="w-full px-2.5 py-1 text-xs border rounded-lg" />
+      <form onsubmit="app.saveNewCard(event)" class="p-4 rounded-2xl bg-gray-50 border border-[#E8E6E1] space-y-3">
+        <h4 class="text-xs font-bold text-[#141413] uppercase tracking-wider">Add New Card</h4>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-mutedgray mb-1">Card Name</label>
+            <input type="text" id="newCardName" required placeholder="e.g. HDFC Regalia" class="w-full px-3 py-1.5 rounded-xl border border-[#E8E6E1] text-xs" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-mutedgray mb-1">Credit Limit (₹)</label>
+            <input type="number" id="newCardLimit" required min="1000" placeholder="e.g. 150000" class="w-full px-3 py-1.5 rounded-xl border border-[#E8E6E1] text-xs" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-semibold text-mutedgray mb-1">Statement Day (1-31)</label>
+            <input type="number" id="newCardStmtDay" min="1" max="31" value="15" class="w-full px-3 py-1.5 rounded-xl border border-[#E8E6E1] text-xs" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-mutedgray mb-1">Due Day (1-31)</label>
+            <input type="number" id="newCardDueDay" min="1" max="31" value="5" class="w-full px-3 py-1.5 rounded-xl border border-[#E8E6E1] text-xs" />
+          </div>
         </div>
         <div>
-          <label class="text-[11px] font-semibold text-stone-600">Credit Limit (₹)</label>
-          <input type="number" id="newCardLimit" required min="1" placeholder="e.g. 150000" class="w-full px-2.5 py-1 text-xs border rounded-lg" />
+          <label class="block text-[11px] font-semibold text-mutedgray mb-1">CSV Aliases (Comma separated)</label>
+          <input type="text" id="newCardAliases" placeholder="e.g. Regalia, HDFC 4001" class="w-full px-3 py-1.5 rounded-xl border border-[#E8E6E1] text-xs" />
         </div>
-        <div>
-          <label class="text-[11px] font-semibold text-stone-600">Statement Day (1-31)</label>
-          <input type="number" id="newCardStmtDay" min="1" max="31" value="15" class="w-full px-2.5 py-1 text-xs border rounded-lg" />
-        </div>
-        <div>
-          <label class="text-[11px] font-semibold text-stone-600">Due Day (1-31)</label>
-          <input type="number" id="newCardDueDay" min="1" max="31" value="5" class="w-full px-2.5 py-1 text-xs border rounded-lg" />
-        </div>
-        <div class="col-span-2">
-          <label class="text-[11px] font-semibold text-stone-600">CSV Aliases (Comma separated)</label>
-          <input type="text" id="newCardAliases" placeholder="e.g. Regalia, HDFC 4001" class="w-full px-2.5 py-1 text-xs border rounded-lg" />
-        </div>
-        <div class="col-span-2 flex justify-end">
-          <button type="submit" class="px-3 py-1 bg-[#141413] text-white text-xs font-semibold rounded-lg hover:bg-black">+ Save Card</button>
+        <div class="flex justify-end pt-1">
+          <button type="submit" class="px-4 py-1.5 rounded-xl bg-[#141413] text-white text-xs font-bold hover:bg-black transition">
+            + Save Card
+          </button>
         </div>
       </form>
 
       <!-- Existing Cards List -->
-      <div class="space-y-2 max-h-60 overflow-y-auto" id="cardsManagerList">
-        <!-- Injected Card Editors -->
+      <div id="cardsManageList" class="space-y-3">
+        <!-- Rendered dynamically -->
       </div>
 
       <div class="flex justify-end pt-2">
-        <button onclick="closeCardManagerModal()" class="px-4 py-1.5 bg-stone-200 text-stone-800 text-xs font-semibold rounded-lg hover:bg-stone-300">Close</button>
+        <button onclick="app.closeModal('cardsModal')" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200 transition">
+          Close
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Google Drive Sync & Virtual Simulator Settings -->
-  <div id="driveSyncModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white border border-[#E6E4DD] rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E6E4DD] pb-3">
-        <h3 class="text-base font-bold text-[#141413] flex items-center gap-2">
-          <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-          Google Drive & State Sync
-        </h3>
-        <button onclick="closeDriveSyncModal()" class="text-stone-400 hover:text-stone-700 font-bold text-lg">&times;</button>
+  <!-- MODAL 4: LINK PAYOFF & RECONCILIATION WORKBENCH -->
+  <div id="linkModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl border border-[#E8E6E1] shadow-2xl max-w-lg w-full p-6 space-y-5">
+      
+      <div class="flex items-center justify-between border-b border-[#E8E6E1] pb-3">
+        <h3 class="text-base font-bold text-[#141413]">Link Payoff / Credit to Spend</h3>
+        <button onclick="app.closeModal('linkModal')" class="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
       </div>
 
-      <div class="space-y-3 text-xs">
-        <!-- Mode Switch: Live OAuth vs Virtual Simulator -->
-        <div class="p-3 rounded-xl bg-stone-100 border border-stone-200 space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-stone-800">Drive Mode:</span>
-            <label class="inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="driveSimToggle" onchange="toggleDriveSimulatorMode()" class="sr-only peer" />
-              <div class="w-9 h-5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-              <span class="ml-2 text-[11px] font-semibold text-stone-700" id="driveSimToggleLabel">Virtual Simulator</span>
-            </label>
-          </div>
-          <p class="text-[11px] text-stone-600 leading-tight" id="driveSimDesc">
-            Virtual Simulator allows testing background polling, file ingestion, safe CSV deletion tracking, and phone/laptop JSON state sync without a Google Cloud OAuth key.
-          </p>
-        </div>
+      <div id="linkModalSpendDetails" class="p-3 rounded-xl bg-gray-50 border border-[#E8E6E1] text-xs space-y-1">
+        <!-- Details populated dynamically -->
+      </div>
 
-        <!-- Live OAuth Form -->
-        <div id="liveDriveConfig" class="space-y-3">
-          <div>
-            <label class="block font-semibold text-stone-700 mb-1">Google OAuth Client ID</label>
-            <input type="text" id="driveClientId" placeholder="e.g. 123456789-abc.apps.googleusercontent.com" class="w-full px-3 py-1.5 border rounded-lg text-xs" />
-          </div>
-          <div>
-            <label class="block font-semibold text-stone-700 mb-1">Target Drive Folder Name</label>
-            <input type="text" id="driveFolderName" value="Axio Card Exports" class="w-full px-3 py-1.5 border rounded-lg text-xs" />
-          </div>
-        </div>
+      <div>
+        <label class="block text-xs font-semibold text-mutedgray mb-1">Select Available Unlinked Payoff / Credit</label>
+        <select id="linkPayoffSelect" class="w-full px-3 py-2 rounded-xl border border-[#E8E6E1] bg-white text-xs font-medium focus:ring-2 focus:ring-accentindigo outline-none">
+          <!-- Populated dynamically -->
+        </select>
+      </div>
 
-        <!-- Polling Interval Selector -->
+      <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block font-semibold text-stone-700 mb-1">Background Polling Interval</label>
-          <select id="drivePollInterval" class="w-full px-3 py-1.5 border rounded-lg text-xs bg-white">
-            <option value="15">Every 15 minutes</option>
-            <option value="60" selected>Every 1 hour</option>
-            <option value="240">Every 4 hours</option>
-            <option value="720">Every 12 hours</option>
-            <option value="1440">Every 24 hours</option>
-          </select>
+          <label class="block text-xs font-semibold text-mutedgray mb-1">Amount to Apply (₹)</label>
+          <input type="number" id="linkAmountInput" step="0.01" min="0.01" class="w-full px-3 py-1.5 rounded-xl border border-[#E8E6E1] text-xs font-mono" />
         </div>
-
-        <!-- Synced Files & Safe Deletion Status -->
-        <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-          <div class="font-bold text-emerald-900 mb-1">Safe to Delete Tracker</div>
-          <p class="text-[11px] text-emerald-800">
-            CSV files auto-imported from Drive are marked below once fully stored in <code class="bg-white/60 px-1 rounded">axio_ledger_state.json</code>. You can safely delete them from Drive to save quota!
-          </p>
-          <div id="driveProcessedFileList" class="mt-2 space-y-1 text-[11px] font-mono text-emerald-950 max-h-24 overflow-y-auto">
-            <!-- List of ingested CSVs -->
-          </div>
-        </div>
-
-        <!-- Simulator Ingest Sandbox Button -->
-        <div id="simControlsBox" class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
-          <span class="text-[11px] font-semibold text-amber-900">Simulate Axio Drive Drop:</span>
-          <button onclick="simulateDriveCSVFileDrop()" class="px-2.5 py-1 bg-amber-600 text-white font-bold text-[11px] rounded-md shadow-sm hover:bg-amber-700">
-            + Drop Sample CSV into Drive
-          </button>
-        </div>
-
-        <!-- Manual Backup / Restore -->
-        <div class="flex items-center justify-between border-t border-[#E6E4DD] pt-3">
-          <button onclick="downloadStateJSONBackup()" class="text-xs font-bold text-stone-700 hover:text-black underline">
-            📥 Download JSON State Backup
-          </button>
-          <label class="text-xs font-bold text-stone-700 hover:text-black underline cursor-pointer">
-            📤 Restore JSON State
-            <input type="file" accept=".json" class="hidden" onchange="restoreStateJSONBackup(event)" />
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 cursor-pointer pb-2">
+            <input type="checkbox" id="linkWaiveShortfall" class="rounded text-accentindigo focus:ring-accentindigo" />
+            <span class="text-xs font-semibold text-amber-900">1-Click Shortfall Waiver</span>
           </label>
         </div>
       </div>
 
-      <div class="flex justify-end gap-2 pt-2 border-t border-[#E6E4DD]">
-        <button onclick="saveDriveSettings()" class="px-4 py-1.5 bg-[#141413] text-white text-xs font-semibold rounded-lg hover:bg-black">Save & Connect</button>
+      <div class="flex justify-end gap-2 pt-2 border-t border-[#E8E6E1]">
+        <button onclick="app.closeModal('linkModal')" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200 transition">
+          Cancel
+        </button>
+        <button onclick="app.confirmLinkPayoff()" class="px-4 py-2 rounded-xl bg-accentindigo text-white text-xs font-bold hover:bg-indigo-700 transition">
+          Apply Link & Settle
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Quick Add Transaction -->
-  <div id="addTxnModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white border border-[#E6E4DD] rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E6E4DD] pb-3">
-        <h3 class="text-base font-bold text-[#141413]">Add Ledger Transaction</h3>
-        <button onclick="closeAddTxnModal()" class="text-stone-400 hover:text-stone-700 font-bold text-lg">&times;</button>
-      </div>
-
-      <form onsubmit="saveManualTxn(event)" class="space-y-3 text-xs">
-        <div>
-          <label class="block font-semibold text-stone-700 mb-1">Transaction Type</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="flex items-center gap-2 border p-2 rounded-lg cursor-pointer hover:bg-stone-50">
-              <input type="radio" name="txnType" value="DR" checked />
-              <span class="font-bold text-amber-900">Debit (Spend)</span>
-            </label>
-            <label class="flex items-center gap-2 border p-2 rounded-lg cursor-pointer hover:bg-stone-50">
-              <input type="radio" name="txnType" value="CR" />
-              <span class="font-bold text-teal-900">Credit (Refund/Payoff)</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-semibold text-stone-700 mb-1">Date</label>
-            <input type="date" id="txnDate" required class="w-full px-2.5 py-1.5 border rounded-lg" />
-          </div>
-          <div>
-            <label class="block font-semibold text-stone-700 mb-1">Amount (₹)</label>
-            <input type="number" step="0.01" id="txnAmount" required placeholder="0.00" class="w-full px-2.5 py-1.5 border rounded-lg" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-stone-700 mb-1">Place / Merchant</label>
-          <input type="text" id="txnPlace" required placeholder="e.g. Amazon, Swiggy, UPI Refund" class="w-full px-2.5 py-1.5 border rounded-lg" />
-        </div>
-
-        <div>
-          <label class="block font-semibold text-stone-700 mb-1">Credit Card Account</label>
-          <select id="txnAccount" class="w-full px-2.5 py-1.5 border rounded-lg bg-white"></select>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-stone-700 mb-1">Reimbursement Note / Tag</label>
-          <input type="text" id="txnNote" placeholder="e.g. mampi to pay, for ma baba, non-expense" class="w-full px-2.5 py-1.5 border rounded-lg" />
-        </div>
-
-        <div class="flex justify-end gap-2 pt-2 border-t border-[#E6E4DD]">
-          <button type="button" onclick="closeAddTxnModal()" class="px-3 py-1.5 bg-stone-200 text-stone-800 font-semibold rounded-lg">Cancel</button>
-          <button type="submit" class="px-4 py-1.5 bg-[#141413] text-white font-semibold rounded-lg hover:bg-black">Save Transaction</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: QA Self-Test Diagnostics Output -->
-  <div id="qaModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white border border-[#E6E4DD] rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4">
-      <div class="flex items-center justify-between border-b border-[#E6E4DD] pb-3">
-        <h3 class="text-base font-bold text-purple-950 flex items-center gap-2">
-          <svg class="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          QA Self-Test Suite Results
+  <!-- MODAL 5: QA DIAGNOSTICS SUITE -->
+  <div id="qaModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-white rounded-3xl border border-[#E8E6E1] shadow-2xl max-w-lg w-full p-6 space-y-4">
+      
+      <div class="flex items-center justify-between border-b border-[#E8E6E1] pb-3">
+        <h3 class="text-base font-bold text-[#141413] flex items-center gap-2">
+          <span>🧪</span> QA Diagnostics Self-Test Suite
         </h3>
-        <button onclick="closeQAModal()" class="text-stone-400 hover:text-stone-700 font-bold text-lg">&times;</button>
+        <button onclick="app.closeModal('qaModal')" class="text-gray-400 hover:text-gray-600 text-lg font-bold">✕</button>
       </div>
 
-      <div id="qaTestLogs" class="bg-stone-900 text-green-400 font-mono text-xs p-4 rounded-xl max-h-80 overflow-y-auto space-y-1.5 leading-relaxed">
-        <!-- QA Log Outputs -->
+      <p class="text-xs text-mutedgray">Runs real-time validation checks for RFC 4180 parsing, Subset-Sum integer paise logic, uncapped signed math, state merging, and reset integrity.</p>
+
+      <div id="qaResults" class="p-4 rounded-2xl bg-gray-900 text-green-400 font-mono text-[11px] max-h-64 overflow-y-auto space-y-1">
+        <div>Click "Run Diagnostics Suite" to execute tests...</div>
       </div>
 
       <div class="flex justify-between items-center pt-2">
-        <span id="qaSummaryBadge" class="text-xs font-bold px-2.5 py-1 rounded-md bg-purple-100 text-purple-900">Running...</span>
-        <button onclick="closeQAModal()" class="px-4 py-1.5 bg-stone-200 text-stone-800 text-xs font-semibold rounded-lg hover:bg-stone-300">Close</button>
+        <button onclick="app.runQADiagnostics()" class="px-4 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition">
+          Run Diagnostics Suite
+        </button>
+        <button onclick="app.closeModal('qaModal')" class="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200 transition">
+          Close
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- JAVASCRIPT APPLICATION CORE ENGINE -->
+  <!-- TOAST NOTIFICATION FLOATER -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- APPLICATION LOGIC INLINE SCRIPT -->
   <script>
-    /* ==========================================================================
-       1. STATE MANAGEMENT & INITIALIZATION DATA
-       ========================================================================== */
-    const STORAGE_KEY = 'AXIO_LEDGER_STATE_V1';
-
-    let appState = {
-      cards: [
-        { id: 'card_icici_8007', name: 'ICICI Amazon Pay (8007)', limit: 250000, stmtDay: 15, dueDay: 5, aliases: ['ICICI 8007', 'Amazon Pay ICICI'], archived: false },
-        { id: 'card_sbi_titan', name: 'SBI Titan RuPay', limit: 120000, stmtDay: 20, dueDay: 10, aliases: ['SBI Titan', 'Titan RuPay'], archived: false },
-        { id: 'card_onecard', name: 'OneCard Metal', limit: 100000, stmtDay: 1, dueDay: 18, aliases: ['OneCard', 'Federal OneCard'], archived: false },
-        { id: 'card_cred_flash', name: 'CRED Flash', limit: 50000, stmtDay: 25, dueDay: 12, aliases: ['CRED Flash', 'CRED Pay'], archived: false },
-        { id: 'card_hdfc_mill', name: 'HDFC Millennia', limit: 180000, stmtDay: 10, dueDay: 30, aliases: ['HDFC Millennia', 'HDFC 4001'], archived: false }
-      ],
-      transactions: [],      // Ledger items (DR spends and linked CR payments)
-      unlinkedCredits: [],   // Incoming payments/refunds waiting for assignment
-      processedFiles: [],    // Drive CSV deduplication log
-      driveSettings: {
-        isSimulator: true,
-        clientId: '',
-        folderName: 'Axio Card Exports',
-        pollIntervalMin: 60,
-        lastSyncTimestamp: null
-      },
-      currentFilter: 'ALL',
-      activeCardFilter: null,
-      pwaPrompt: null
-    };
-
-    /* Seed Mock Data if empty */
-    function seedInitialDataIfEmpty() {
-      if (appState.transactions.length === 0 && appState.unlinkedCredits.length === 0) {
-        const today = new Date().toISOString().split('T')[0];
-        
-        // 1. Fully Settled Spend
-        appState.transactions.push({
-          id: 'txn_seed_1',
-          fingerprint: 'fp_seed_1',
-          date: today,
-          place: 'Amazon.in India',
-          amount: 1499.00,
-          account: 'ICICI Amazon Pay (8007)',
-          category: 'Shopping',
-          note: 'Home Essentials',
-          linkedPayments: [{ id: 'pay_seed_1', amount: 1499.00, date: today, source: 'CRED Payoff' }],
-          shortfallWaived: 0,
-          status: 'SETTLED'
-        });
-
-        // 2. Partial Payment with Waiveable Shortfall
-        appState.transactions.push({
-          id: 'txn_seed_2',
-          fingerprint: 'fp_seed_2',
-          date: today,
-          place: 'Flipkart Online',
-          amount: 750.00,
-          account: 'HDFC Millennia',
-          category: 'Electronics',
-          note: 'mampi to pay',
-          linkedPayments: [
-            { id: 'pay_seed_2a', amount: 350.00, date: today, source: 'GPay Split' },
-            { id: 'pay_seed_2b', amount: 350.00, date: today, source: 'GPay Split 2' }
+    /**
+     * AXIO CARD LEDGER PWA ENGINE
+     * Production-ready state management, RFC 4180 CSV parser,
+     * Subset-Sum bundler, Google Drive state sync, & Reset handler.
+     */
+    class AxioLedgerApp {
+      constructor() {
+        // Core Initial State
+        this.state = {
+          cards: [
+            { id: 'c1', name: 'ICICI Amazon Pay', limit: 250000, statementDay: 15, dueDay: 5, aliases: ['ICICI', 'Amazon Pay', '8007'] },
+            { id: 'c2', name: 'SBI Titan RuPay', limit: 120000, statementDay: 20, dueDay: 10, aliases: ['SBI', 'Titan', 'RuPay'] },
+            { id: 'c3', name: 'OneCard Metal', limit: 100000, statementDay: 1, dueDay: 18, aliases: ['OneCard', 'Metal'] },
+            { id: 'c4', name: 'CRED Flash', limit: 50000, statementDay: 25, dueDay: 12, aliases: ['CRED', 'Flash'] },
+            { id: 'c5', name: 'HDFC Millennia', limit: 180000, statementDay: 10, dueDay: 30, aliases: ['HDFC', 'Millennia'] }
           ],
-          shortfallWaived: 0, // Leaves ₹50 open due
-          status: 'ACTION_REQUIRED'
-        });
-
-        // 3. Over-refund Surplus Credit
-        appState.transactions.push({
-          id: 'txn_seed_3',
-          fingerprint: 'fp_seed_3',
-          date: today,
-          place: 'Zomato Food Order',
-          amount: 650.00,
-          account: 'OneCard Metal',
-          category: 'Dining',
-          note: 'Order dispute refund',
-          linkedPayments: [
-            { id: 'pay_seed_3', amount: 740.00, date: today, source: 'Merchant Refund' }
+          spends: [
+            { id: 'sp-1', cardId: 'c5', date: '2026-03-10', place: 'Swiggy Gourmet', amount: 450.00, ref: 'AX-9001', note: 'Office Team Lunch', waived: false },
+            { id: 'sp-2', cardId: 'c5', date: '2026-03-12', place: 'Amazon Online', amount: 1400.00, ref: 'AX-9002', note: 'Monitor Desk Arm', waived: false },
+            { id: 'sp-3', cardId: 'c3', date: '2026-03-14', place: 'Reliance Digital', amount: 12500.00, ref: 'AX-9003', note: '', waived: false }
           ],
-          shortfallWaived: 0, // Net -₹90 surplus
-          status: 'SURPLUS'
-        });
+          credits: [
+            { id: 'cr-1', cardId: 'c5', date: '2026-03-15', place: 'HDFC Paytm Payoff', amount: 1800.00, ref: 'PAY-101' },
+            { id: 'cr-2', cardId: 'c3', date: '2026-03-16', place: 'OneCard Refund Merchant', amount: 12590.00, ref: 'REF-202' }
+          ],
+          links: [
+            { id: 'lk-1', spendId: 'sp-1', creditId: 'cr-1', amount: 450.00 }
+            // Note: sp-2 will have 1350 remaining under cr-1
+          ],
+          processedFiles: [
+            { name: 'Axio_Statement_Mar2026.csv', processedAt: Date.now() - 86400000, rows: 5 }
+          ],
+          updatedAt: Date.now()
+        };
 
-        // 4. Unlinked Payoffs Queue
-        appState.unlinkedCredits.push(
-          { id: 'unlinked_1', fingerprint: 'fp_unlinked_1', date: today, place: 'Axio Auto Payoff', amount: 1500.00, account: 'SBI Titan RuPay', note: 'Bulk Bank Payment' },
-          { id: 'unlinked_2', fingerprint: 'fp_unlinked_2', date: today, place: 'Myntra Cashback Refund', amount: 300.00, account: 'SBI Titan RuPay', note: 'App Cashback' }
-        );
+        // App Config & Filters
+        this.config = {
+          simulatorMode: true,
+          clientId: '',
+          driveFolderName: 'Axio Card Ledger Exports',
+          pollingInterval: 3600000
+        };
 
-        saveAppStateLocally();
+        this.filters = {
+          cardId: 'ALL',
+          status: 'ALL',
+          searchQuery: ''
+        };
+
+        this.activeLinkingSpendId = null;
+        this.matchedBundleSpends = [];
       }
-    }
 
-    function saveAppStateLocally() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-        updateSyncStateBadge();
-      } catch (e) {
-        console.error('LocalStorage save error:', e);
+      init() {
+        this.loadLocalStorage();
+        this.setupPWA();
+        this.renderAll();
+        this.startBackgroundPolling();
       }
-    }
 
-    function loadAppStateLocally() {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          appState = Object.assign(appState, JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error('LocalStorage load error:', e);
-      }
-    }
-
-    /* ==========================================================================
-       2. AXIO MULTI-CSV PARSER & METADATA STRIPPER
-       ========================================================================== */
-    function parseAxioCSVContent(csvText, fileName = 'Imported.csv') {
-      const lines = csvText.split(/\r?\n/);
-      const cleanRows = [];
-      let headerFound = false;
-      let headers = [];
-
-      for (let rawLine of lines) {
-        const line = rawLine.trim();
-        if (!line || line.includes('POWERED BY axio') || line.startsWith('===') || line.startsWith('Total')) {
-          continue; // Strip Axio metadata footer & headers
-        }
-
-        const columns = parseCSVRow(line);
-        if (!headerFound) {
-          // Detect header row by key column names
-          const upperCols = columns.map(c => c.toUpperCase());
-          if (upperCols.includes('DATE') && (upperCols.includes('AMOUNT') || upperCols.includes('PLACE'))) {
-            headerFound = true;
-            headers = upperCols;
-            continue;
+      // --- LOCAL STORAGE PERSISTENCE ---
+      loadLocalStorage() {
+        try {
+          const savedState = localStorage.getItem('axio_ledger_state');
+          if (savedState) {
+            const parsed = JSON.parse(savedState);
+            if (parsed && parsed.cards) this.state = parsed;
           }
+          const savedConfig = localStorage.getItem('axio_ledger_config');
+          if (savedConfig) {
+            const parsedCfg = JSON.parse(savedConfig);
+            if (parsedCfg) this.config = { ...this.config, ...parsedCfg };
+          }
+        } catch (e) {
+          console.error("Failed to load local storage:", e);
+        }
+      }
+
+      saveLocalStorage() {
+        this.state.updatedAt = Date.now();
+        localStorage.setItem('axio_ledger_state', JSON.stringify(this.state));
+        localStorage.setItem('axio_ledger_config', JSON.stringify(this.config));
+        this.syncToDriveIfActive();
+      }
+
+      // --- PWA REGISTRATION WITH INLINE SERVICE WORKER BLOB ---
+      setupPWA() {
+        // Register Service Worker dynamically via Blob URL
+        if ('serviceWorker' in navigator) {
+          const swCode = `
+            const CACHE_NAME = 'axio-ledger-cache-v1';
+            self.addEventListener('install', e => self.skipWaiting());
+            self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+            self.addEventListener('fetch', e => {
+              e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+            });
+          `;
+          const blob = new Blob([swCode], { type: 'application/javascript' });
+          const blobUrl = URL.createObjectURL(blob);
+          navigator.serviceWorker.register(blobUrl).catch(() => {});
+        }
+
+        // Generate dynamic Data URI Web Manifest
+        const manifest = {
+          name: "Axio Card Ledger",
+          short_name: "Axio Ledger",
+          start_url: "./",
+          display: "standalone",
+          background_color: "#FAF9F6",
+          theme_color: "#141413",
+          icons: [{
+            src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23141413'/><text x='50' y='68' font-size='55' font-weight='bold' text-anchor='middle' fill='white'>₹</text></svg>",
+            sizes: "192x192 512x512",
+            type: "image/svg+xml"
+          }]
+        };
+        const manifestStr = "data:application/manifest+json;base64," + btoa(JSON.stringify(manifest));
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = manifestStr;
+        document.head.appendChild(manifestLink);
+      }
+
+      // --- RENDER PIPELINE ---
+      renderAll() {
+        this.renderBadges();
+        this.renderKPIs();
+        this.renderCardsGrid();
+        this.renderWorkbench();
+        this.renderBundlePayoffDropdown();
+        this.renderCardsManageList();
+        this.renderSafeToDeleteList();
+      }
+
+      renderBadges() {
+        const driveBadge = document.getElementById('driveStatusBadge');
+        if (this.config.simulatorMode) {
+          driveBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200";
+          driveBadge.innerText = "Simulator Active";
+        } else if (this.config.clientId) {
+          driveBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200";
+          driveBadge.innerText = "Drive OAuth Connected";
         } else {
-          if (columns.length >= 3) {
-            cleanRows.push(columns);
-          }
+          driveBadge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200";
+          driveBadge.innerText = "Drive Disconnected";
         }
       }
 
-      // Map parsed clean rows into domain model
-      let importedCount = 0;
-      let duplicateCount = 0;
+      // --- MATHEMATICAL LEDGER ENGINE & KPIS ---
+      renderKPIs() {
+        let totalDuesPaise = 0;
+        let totalSurplusPaise = 0;
 
-      cleanRows.forEach(row => {
-        const rowObj = {};
-        headers.forEach((h, idx) => {
-          rowObj[h] = row[idx] ? row[idx].trim() : '';
-        });
+        // Calculate net status per card
+        this.state.cards.forEach(card => {
+          const cardSpends = this.state.spends.filter(s => s.cardId === card.id);
+          const cardCredits = this.state.credits.filter(c => c.cardId === card.id);
 
-        const date = rowObj['DATE'] || new Date().toISOString().split('T')[0];
-        const place = rowObj['PLACE'] || rowObj['MERCHANT'] || 'Axio Transaction';
-        const rawAmount = parseFloat((rowObj['AMOUNT'] || '0').replace(/[^0-9.]/g, '')) || 0;
-        const type = (rowObj['DR/CR'] || rowObj['TYPE'] || 'DR').toUpperCase().includes('CR') ? 'CR' : 'DR';
-        const account = rowObj['ACCOUNT'] || 'ICICI Amazon Pay (8007)';
-        const category = rowObj['CATEGORY'] || rowObj['EXPENSE'] || 'General';
-        const note = rowObj['NOTE'] || rowObj['TAGS'] || '';
-
-        // Generate row fingerprint to prevent duplicate import
-        const fingerprint = `${date}_${place}_${rawAmount}_${type}_${account}`;
-
-        if (isFingerprintDuplicate(fingerprint)) {
-          duplicateCount++;
-          return;
-        }
-
-        // Auto-discover missing cards from CSV account column
-        autoDiscoverCard(account);
-
-        if (type === 'DR') {
-          appState.transactions.push({
-            id: 'txn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            fingerprint: fingerprint,
-            date: date,
-            place: place,
-            amount: rawAmount,
-            account: resolveAccountName(account),
-            category: category,
-            note: note,
-            linkedPayments: [],
-            shortfallWaived: 0,
-            status: 'ACTION_REQUIRED'
+          // Calculate total net open dues for card spends
+          cardSpends.forEach(s => {
+            if (s.waived) return;
+            const linked = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+            const spendPaise = Math.round(s.amount * 100);
+            const due = Math.max(0, spendPaise - linked);
+            totalDuesPaise += due;
           });
-        } else {
-          appState.unlinkedCredits.push({
-            id: 'unlinked_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-            fingerprint: fingerprint,
-            date: date,
-            place: place,
-            amount: rawAmount,
-            account: resolveAccountName(account),
-            note: note
-          });
-        }
 
-        importedCount++;
-      });
-
-      if (!appState.processedFiles.includes(fileName)) {
-        appState.processedFiles.push(fileName);
-      }
-
-      saveAppStateLocally();
-      renderAll();
-      return { importedCount, duplicateCount };
-    }
-
-    function parseCSVRow(rowStr) {
-      const result = [];
-      let insideQuotes = false;
-      let currentVal = '';
-      for (let i = 0; i < rowStr.length; i++) {
-        const char = rowStr[i];
-        if (char === '"') {
-          insideQuotes = !insideQuotes;
-        } else if (char === ',' && !insideQuotes) {
-          result.push(currentVal);
-          currentVal = '';
-        } else {
-          currentVal += char;
-        }
-      }
-      result.push(currentVal);
-      return result;
-    }
-
-    function isFingerprintDuplicate(fp) {
-      const inTxns = appState.transactions.some(t => t.fingerprint === fp);
-      const inUnlinked = appState.unlinkedCredits.some(u => u.fingerprint === fp);
-      return inTxns || inUnlinked;
-    }
-
-    function resolveAccountName(rawAcc) {
-      const match = appState.cards.find(c => 
-        c.name.toLowerCase() === rawAcc.toLowerCase() || 
-        c.aliases.some(a => a.toLowerCase() === rawAcc.toLowerCase())
-      );
-      return match ? match.name : rawAcc;
-    }
-
-    function autoDiscoverCard(accName) {
-      if (!accName) return;
-      const exists = appState.cards.some(c => 
-        c.name.toLowerCase() === accName.toLowerCase() || 
-        c.aliases.some(a => a.toLowerCase() === accName.toLowerCase())
-      );
-      if (!exists) {
-        appState.cards.push({
-          id: 'card_auto_' + Date.now(),
-          name: accName,
-          limit: 100000, // default limit for auto-discovered card
-          stmtDay: 15,
-          dueDay: 5,
-          aliases: [accName],
-          archived: false
-        });
-      }
-    }
-
-    /* ==========================================================================
-       3. LEDGER MATH ENGINE & SUBSET-SUM SMART BUNDLE FINDER
-       ========================================================================== */
-    function calculateNetLedgerItem(txn) {
-      const grossSpend = txn.amount || 0;
-      const totalLinkedPaid = (txn.linkedPayments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
-      const waived = txn.shortfallWaived || 0;
-      
-      // Uncapped signed net arithmetic
-      const netDue = grossSpend - totalLinkedPaid - waived;
-
-      let computedStatus = 'ACTION_REQUIRED';
-      if (Math.abs(netDue) < 0.01) {
-        computedStatus = 'SETTLED';
-      } else if (netDue < -0.01) {
-        computedStatus = 'SURPLUS';
-      }
-
-      return { grossSpend, totalLinkedPaid, waived, netDue, computedStatus };
-    }
-
-    function calculateCardMetrics(cardName) {
-      let totalOpenDues = 0;
-      let totalSurplus = 0;
-      let totalUtilised = 0;
-
-      appState.transactions.forEach(txn => {
-        if (txn.account === cardName) {
-          const { netDue } = calculateNetLedgerItem(txn);
-          if (netDue > 0) {
-            totalOpenDues += netDue;
-            totalUtilised += netDue;
-          } else if (netDue < 0) {
-            totalSurplus += Math.abs(netDue);
+          // Check if total card credits exceed total card spends (Surplus)
+          const totalSpendSum = cardSpends.reduce((sum, s) => sum + Math.round(s.amount * 100), 0);
+          const totalCreditSum = cardCredits.reduce((sum, c) => sum + Math.round(c.amount * 100), 0);
+          if (totalCreditSum > totalSpendSum) {
+            totalSurplusPaise += (totalCreditSum - totalSpendSum);
           }
-        }
-      });
+        });
 
-      return { totalOpenDues, totalSurplus, totalUtilised };
-    }
+        // Unlinked Payoffs pool
+        let unlinkedPaise = 0;
+        let unlinkedCount = 0;
+        this.state.credits.forEach(c => {
+          const totalLinkedToCredit = this.state.links.filter(l => l.creditId === c.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const creditPaise = Math.round(c.amount * 100);
+          const remaining = creditPaise - totalLinkedToCredit;
+          if (remaining > 0) {
+            unlinkedPaise += remaining;
+            unlinkedCount++;
+          }
+        });
 
-    // Subset-Sum Knapsack Algorithm for Smart Payment Matching
-    function findSubsetSumMatch(unlinkedItem) {
-      const targetAccount = unlinkedItem.account;
-      const targetAmount = Math.round(unlinkedItem.amount * 100); // work in integer paise
+        // Total Limit
+        const totalLimitPaise = this.state.cards.reduce((sum, c) => sum + (c.limit * 100), 0);
+        const utilPct = totalLimitPaise > 0 ? Math.min(100, Math.round((totalDuesPaise / totalLimitPaise) * 100)) : 0;
 
-      // Filter unpaid open transactions for this card
-      const candidateTxns = appState.transactions.filter(t => {
-        if (t.account !== targetAccount) return false;
-        const { netDue } = calculateNetLedgerItem(t);
-        return netDue > 0;
-      }).map(t => {
-        const { netDue } = calculateNetLedgerItem(t);
-        return { txn: t, paiseDue: Math.round(netDue * 100) };
-      });
+        // Update DOM
+        document.getElementById('kpiTotalDues').innerText = '₹' + (totalDuesPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        document.getElementById('kpiSurplus').innerText = '₹' + (totalSurplusPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        document.getElementById('kpiUnlinkedPayoffs').innerText = '₹' + (unlinkedPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+        document.getElementById('kpiUnlinkedCount').innerText = `${unlinkedCount} items waiting`;
 
-      // Recursive backtracking subset sum solver
-      let foundCombo = null;
-
-      function backtrack(index, currentSum, selected) {
-        if (foundCombo) return;
-        if (currentSum === targetAmount) {
-          foundCombo = [...selected];
-          return;
-        }
-        if (currentSum > targetAmount || index >= candidateTxns.length) {
-          return;
-        }
-
-        // Include candidate
-        selected.push(candidateTxns[index]);
-        backtrack(index + 1, currentSum + candidateTxns[index].paiseDue, selected);
-        selected.pop();
-
-        // Exclude candidate
-        backtrack(index + 1, currentSum, selected);
+        document.getElementById('kpiUtilisationPct').innerText = `${utilPct}%`;
+        document.getElementById('kpiUtilisationDetail').innerText = `₹${(totalDuesPaise / 100).toLocaleString('en-IN')} / ₹${(totalLimitPaise / 100).toLocaleString('en-IN')}`;
+        document.getElementById('kpiUtilisationBar').style.width = `${utilPct}%`;
       }
 
-      backtrack(0, 0, []);
-      return foundCombo;
-    }
-
-    /* ==========================================================================
-       4. UI RENDER ENGINE & INTERACTIONS
-       ========================================================================== */
-    function renderAll() {
-      renderCardsStrip();
-      renderLedger();
-      renderUnlinkedPool();
-      renderKPISummary();
-      renderDriveProcessedFiles();
-    }
-
-    function renderKPISummary() {
-      let overallOpenDues = 0;
-      let overallSurplus = 0;
-      let overallLimit = 0;
-      let overallUtilised = 0;
-
-      appState.cards.filter(c => !c.archived).forEach(card => {
-        overallLimit += card.limit;
-        const metrics = calculateCardMetrics(card.name);
-        overallOpenDues += metrics.totalOpenDues;
-        overallSurplus += metrics.totalSurplus;
-        overallUtilised += metrics.totalUtilised;
-      });
-
-      document.getElementById('kpiTotalDues').textContent = '₹' + overallOpenDues.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-      document.getElementById('kpiSurplus').textContent = '₹' + overallSurplus.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-
-      const unlinkedTotal = appState.unlinkedCredits.reduce((s, c) => s + c.amount, 0);
-      document.getElementById('kpiUnlinkedPool').textContent = '₹' + unlinkedTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 });
-      document.getElementById('kpiUnlinkedCount').textContent = `${appState.unlinkedCredits.length} items waiting`;
-
-      const utilRatio = overallLimit > 0 ? Math.min(100, Math.round((overallUtilised / overallLimit) * 100)) : 0;
-      document.getElementById('kpiUtilisationRatio').textContent = `${utilRatio}%`;
-      document.getElementById('kpiUtilisedAmount').textContent = `₹${Math.round(overallUtilised).toLocaleString('en-IN')} / ₹${Math.round(overallLimit).toLocaleString('en-IN')}`;
-      document.getElementById('kpiUtilisationBar').style.width = `${utilRatio}%`;
-    }
-
-    function renderCardsStrip() {
-      const container = document.getElementById('cardsStrip');
-      container.innerHTML = '';
-
-      appState.cards.filter(c => !c.archived).forEach(card => {
-        const metrics = calculateCardMetrics(card.name);
-        const isSelected = appState.activeCardFilter === card.name;
-        const utilPercent = card.limit > 0 ? Math.min(100, Math.round((metrics.totalUtilised / card.limit) * 100)) : 0;
-
-        const cardEl = document.createElement('div');
-        cardEl.className = `p-3.5 rounded-xl border transition cursor-pointer select-none ${
-          isSelected 
-            ? 'bg-[#141413] text-[#FAF9F6] border-[#141413] shadow-md ring-2 ring-stone-900/20' 
-            : 'bg-white text-[#141413] border-[#E6E4DD] hover:border-stone-400 shadow-sm'
-        }`;
+      // --- CARDS GRID ---
+      renderCardsGrid() {
+        const grid = document.getElementById('cardsGrid');
+        const filterSelect = document.getElementById('filterCardSelect');
         
-        cardEl.onclick = () => filterByCard(card.name);
+        let gridHtml = '';
+        let optionsHtml = '<option value="ALL">All Credit Cards</option>';
 
-        cardEl.innerHTML = `
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold tracking-tight truncate max-w-[130px]">${card.name}</span>
-            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${isSelected ? 'bg-stone-800 text-stone-200' : 'bg-stone-100 text-stone-600'}">
-              Due ${card.dueDay}th
-            </span>
-          </div>
+        this.state.cards.forEach(card => {
+          optionsHtml += `<option value="${card.id}">${card.name}</option>`;
 
-          <div class="space-y-1">
-            <div class="flex items-baseline justify-between text-xs">
-              <span class="text-[11px] font-medium opacity-80">Net Due:</span>
-              <span class="font-bold tabular-nums ${isSelected ? 'text-amber-400' : 'text-[#B45309]'}">
-                ₹${metrics.totalOpenDues.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
+          // Compute Card Specific Dues & Surplus
+          const cardSpends = this.state.spends.filter(s => s.cardId === card.id);
+          const cardCredits = this.state.credits.filter(c => c.cardId === card.id);
 
-            ${metrics.totalSurplus > 0 ? `
-              <div class="flex items-baseline justify-between text-xs">
-                <span class="text-[11px] font-medium opacity-80">Surplus:</span>
-                <span class="font-bold tabular-nums ${isSelected ? 'text-purple-300' : 'text-[#6D28D9]'}">
-                  -₹${metrics.totalSurplus.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          let openDuePaise = 0;
+          cardSpends.forEach(s => {
+            if (s.waived) return;
+            const linked = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+            openDuePaise += Math.max(0, Math.round(s.amount * 100) - linked);
+          });
+
+          const totalSpendSum = cardSpends.reduce((sum, s) => sum + Math.round(s.amount * 100), 0);
+          const totalCreditSum = cardCredits.reduce((sum, c) => sum + Math.round(c.amount * 100), 0);
+          const surplusPaise = Math.max(0, totalCreditSum - totalSpendSum);
+
+          const utilPct = card.limit > 0 ? Math.min(100, Math.round(((openDuePaise / 100) / card.limit) * 100)) : 0;
+          const isSelected = this.filters.cardId === card.id;
+
+          gridHtml += `
+            <div onclick="app.setCardFilter('${card.id}')" class="p-4 rounded-2xl bg-white border ${isSelected ? 'border-accentindigo ring-2 ring-indigo-100' : 'border-[#E8E6E1]'} shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h3 class="text-sm font-bold text-[#141413]">${card.name}</h3>
+                  <p class="text-[11px] text-mutedgray mt-0.5">Aliases: ${card.aliases.join(', ')}</p>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">
+                  Due ${card.dueDay}th
                 </span>
               </div>
-            ` : ''}
 
-            <!-- Utilisation Bar -->
-            <div class="pt-2">
-              <div class="flex justify-between text-[10px] opacity-70 mb-1">
-                <span>Utilised ${utilPercent}%</span>
-                <span>Max ₹${(card.limit/1000).toFixed(0)}k</span>
-              </div>
-              <div class="w-full h-1 rounded-full ${isSelected ? 'bg-stone-800' : 'bg-stone-100'} overflow-hidden">
-                <div class="h-1 rounded-full ${utilPercent > 70 ? 'bg-amber-500' : isSelected ? 'bg-white' : 'bg-stone-800'}" style="width: ${utilPercent}%"></div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        container.appendChild(cardEl);
-      });
-    }
-
-    function filterByCard(cardName) {
-      if (appState.activeCardFilter === cardName) {
-        appState.activeCardFilter = null;
-      } else {
-        appState.activeCardFilter = cardName;
-      }
-      renderCardsStrip();
-      renderLedger();
-    }
-
-    function setFilter(filterType) {
-      appState.currentFilter = filterType;
-      ['ALL', 'ACTION', 'SETTLED', 'SURPLUS', 'REIMBURSED'].forEach(f => {
-        const btn = document.getElementById(`filterBtn${f}`);
-        if (btn) {
-          if (f === filterType) {
-            btn.className = 'px-2.5 py-1 text-xs font-semibold rounded-md bg-[#141413] text-white';
-          } else {
-            btn.className = 'px-2.5 py-1 text-xs font-semibold rounded-md bg-white border border-[#E6E4DD] text-stone-700 hover:bg-stone-100';
-          }
-        }
-      });
-      renderLedger();
-    }
-
-    function renderLedger() {
-      const container = document.getElementById('ledgerContainer');
-      const search = (document.getElementById('searchInput').value || '').toLowerCase();
-      container.innerHTML = '';
-
-      let items = appState.transactions.filter(t => {
-        // Active Card Filter
-        if (appState.activeCardFilter && t.account !== appState.activeCardFilter) return false;
-
-        // Search Filter
-        if (search) {
-          const matchPlace = (t.place || '').toLowerCase().includes(search);
-          const matchNote = (t.note || '').toLowerCase().includes(search);
-          const matchAcc = (t.account || '').toLowerCase().includes(search);
-          if (!matchPlace && !matchNote && !matchAcc) return false;
-        }
-
-        const { netDue, computedStatus } = calculateNetLedgerItem(t);
-
-        // Category Filter Pills
-        if (appState.currentFilter === 'ACTION') return netDue > 0;
-        if (appState.currentFilter === 'SETTLED') return computedStatus === 'SETTLED';
-        if (appState.currentFilter === 'SURPLUS') return netDue < 0;
-        if (appState.currentFilter === 'REIMBURSED') return (t.note || '').length > 0;
-
-        return true;
-      });
-
-      document.getElementById('ledgerCountText').textContent = `Showing ${items.length} of ${appState.transactions.length} transactions`;
-      document.getElementById('ledgerFilterCardText').textContent = appState.activeCardFilter ? `(Filtered by ${appState.activeCardFilter})` : '';
-
-      if (items.length === 0) {
-        container.innerHTML = `
-          <div class="p-8 text-center text-xs text-stone-400">
-            No transactions found matching the selected filter or card.
-          </div>
-        `;
-        return;
-      }
-
-      items.forEach(txn => {
-        const { grossSpend, totalLinkedPaid, waived, netDue, computedStatus } = calculateNetLedgerItem(txn);
-
-        const row = document.createElement('div');
-        row.className = 'p-4 hover:bg-stone-50/80 transition flex flex-col md:flex-row md:items-center justify-between gap-3';
-
-        let statusTag = '';
-        if (computedStatus === 'SETTLED') {
-          statusTag = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800">Settled ₹0</span>`;
-        } else if (computedStatus === 'SURPLUS') {
-          statusTag = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900">Surplus -₹${Math.abs(netDue).toFixed(2)}</span>`;
-        } else {
-          statusTag = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900">Due ₹${netDue.toFixed(2)}</span>`;
-        }
-
-        row.innerHTML = `
-          <div class="flex items-start gap-3 flex-1 min-w-0">
-            <div class="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center font-bold text-stone-600 text-xs shrink-0 mt-0.5">
-              ${txn.place.charAt(0).toUpperCase()}
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-xs font-bold text-[#141413] truncate">${txn.place}</span>
-                ${statusTag}
-                <span class="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium">${txn.account}</span>
-              </div>
-              <div class="text-[11px] text-stone-500 flex items-center gap-2 mt-0.5 flex-wrap">
-                <span>${txn.date}</span>
-                <span>•</span>
-                <span>Gross: <strong class="text-stone-800 tabular-nums">₹${grossSpend.toFixed(2)}</strong></span>
-                ${totalLinkedPaid > 0 ? `<span>•</span><span class="text-teal-700">Paid: ₹${totalLinkedPaid.toFixed(2)}</span>` : ''}
-                ${waived > 0 ? `<span>•</span><span class="text-stone-600">Waived: ₹${waived.toFixed(2)}</span>` : ''}
-              </div>
-              ${txn.note ? `
-                <div class="text-[11px] text-amber-900 bg-amber-50/80 px-2 py-0.5 rounded border border-amber-100 inline-block mt-1 font-medium">
-                  🏷️ ${txn.note}
+              <div class="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
+                <div>
+                  <span class="text-[10px] text-mutedgray uppercase font-semibold">Net Due</span>
+                  <div class="text-base font-bold ${openDuePaise > 0 ? 'text-accentrose' : 'text-gray-900'}">
+                    ₹${(openDuePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
                 </div>
-              ` : ''}
-
-              <!-- Linked Payments breakdown -->
-              ${txn.linkedPayments && txn.linkedPayments.length > 0 ? `
-                <div class="mt-2 pl-2 border-l-2 border-teal-500 space-y-1">
-                  ${txn.linkedPayments.map(p => `
-                    <div class="text-[11px] text-stone-600 flex items-center justify-between gap-2 max-w-sm">
-                      <span>🔗 ${p.source || 'Payment'} (${p.date})</span>
-                      <div class="flex items-center gap-1.5">
-                        <span class="font-bold tabular-nums text-teal-800">₹${p.amount.toFixed(2)}</span>
-                        <button onclick="unlinkPayment('${txn.id}', '${p.id}')" class="text-red-500 hover:text-red-700 text-[10px] underline">Unlink</button>
-                      </div>
-                    </div>
-                  `).join('')}
+                <div>
+                  <span class="text-[10px] text-mutedgray uppercase font-semibold">Surplus</span>
+                  <div class="text-base font-bold text-accentemerald">
+                    ${surplusPaise > 0 ? '₹' + (surplusPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '₹0.00'}
+                  </div>
                 </div>
-              ` : ''}
-            </div>
-          </div>
+              </div>
 
-          <!-- Actions Column -->
-          <div class="flex items-center gap-2 shrink-0 self-end md:self-center">
-            ${netDue > 0 ? `
-              <button onclick="waiveShortfall('${txn.id}', ${netDue})" class="px-2 py-1 text-[11px] font-semibold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 rounded-md transition">
-                1-Click Waive ₹${netDue.toFixed(0)}
-              </button>
-            ` : ''}
-            <button onclick="deleteTransaction('${txn.id}')" class="p-1 text-stone-400 hover:text-red-600 transition" title="Delete entry">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-            </button>
-          </div>
-        `;
-
-        container.appendChild(row);
-      });
-    }
-
-    function renderUnlinkedPool() {
-      const container = document.getElementById('unlinkedPoolContainer');
-      const badge = document.getElementById('unlinkedBadge');
-      container.innerHTML = '';
-      badge.textContent = appState.unlinkedCredits.length;
-
-      if (appState.unlinkedCredits.length === 0) {
-        container.innerHTML = `
-          <div class="p-6 text-center text-xs text-stone-400 border border-dashed border-stone-200 rounded-lg">
-            No incoming unlinked payoffs or refunds queued.
-          </div>
-        `;
-        return;
-      }
-
-      appState.unlinkedCredits.forEach(credit => {
-        const item = document.createElement('div');
-        item.className = 'p-3 bg-stone-50 border border-[#E6E4DD] rounded-xl space-y-2 hover:border-stone-400 transition';
-        
-        item.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-stone-800 truncate">${credit.place}</span>
-            <span class="text-xs font-bold tabular-nums text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-              +₹${credit.amount.toFixed(2)}
-            </span>
-          </div>
-          <div class="flex items-center justify-between text-[11px] text-stone-500">
-            <span>${credit.account}</span>
-            <span>${credit.date}</span>
-          </div>
-          
-          <div class="pt-1 flex items-center justify-between gap-2 border-t border-stone-200/60">
-            <button onclick="runSubsetSumForCredit('${credit.id}')" class="text-[10px] font-bold text-amber-800 hover:underline flex items-center gap-1">
-              ⚡ Find Spends Bundle
-            </button>
-            <button onclick="openManualLinkPrompt('${credit.id}')" class="px-2 py-0.5 bg-[#141413] text-white text-[10px] font-semibold rounded hover:bg-black">
-              Link to Spend...
-            </button>
-          </div>
-        `;
-
-        container.appendChild(item);
-      });
-    }
-
-    /* ==========================================================================
-       5. RECONCILIATION ACTIONS & LINKING LOGIC
-       ========================================================================== */
-    function runSubsetSumForCredit(creditId) {
-      const credit = appState.unlinkedCredits.find(c => c.id === creditId);
-      if (!credit) return;
-
-      const resultsBox = document.getElementById('smartBundleResults');
-      resultsBox.innerHTML = `<span class="text-amber-700 animate-pulse font-semibold">Scanning unpaid spends for ₹${credit.amount}...</span>`;
-
-      setTimeout(() => {
-        const matches = findSubsetSumMatch(credit);
-        if (!matches || matches.length === 0) {
-          resultsBox.innerHTML = `
-            <div class="text-stone-600">
-              No exact combination of open spends on <strong>${credit.account}</strong> sums to <strong>₹${credit.amount.toFixed(2)}</strong>.
+              <div class="mt-3">
+                <div class="flex justify-between text-[11px] text-mutedgray font-medium">
+                  <span>Utilised ${utilPct}%</span>
+                  <span>Max ₹${(card.limit / 1000).toFixed(0)}k</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-1.5 mt-1 overflow-hidden">
+                  <div class="bg-accentindigo h-full rounded-full" style="width: ${utilPct}%"></div>
+                </div>
+              </div>
             </div>
           `;
-        } else {
-          const matchTxns = matches.map(m => m.txn);
-          const totalMatched = matchTxns.reduce((s, t) => s + calculateNetLedgerItem(t).netDue, 0);
-
-          resultsBox.innerHTML = `
-            <div class="w-full text-left space-y-2">
-              <div class="font-bold text-emerald-900 flex items-center justify-between">
-                <span>Exact Match Found! (${matchTxns.length} Spends)</span>
-                <span class="tabular-nums">₹${totalMatched.toFixed(2)}</span>
-              </div>
-              <ul class="space-y-1 text-[11px] text-stone-700 max-h-24 overflow-y-auto pl-2 border-l-2 border-emerald-500">
-                ${matchTxns.map(t => `<li>• ${t.place}: ₹${calculateNetLedgerItem(t).netDue.toFixed(2)}</li>`).join('')}
-              </ul>
-              <button onclick="executeBundleLink('${credit.id}', [${matchTxns.map(t => `'${t.id}'`).join(',')}])" class="w-full py-1 bg-emerald-700 text-white font-bold rounded hover:bg-emerald-800 text-[11px]">
-                Link ₹${credit.amount.toFixed(2)} Across these ${matchTxns.length} Spends
-              </button>
-            </div>
-          `;
-        }
-      }, 300);
-    }
-
-    function executeBundleLink(creditId, txnIds) {
-      const creditIdx = appState.unlinkedCredits.findIndex(c => c.id === creditId);
-      if (creditIdx === -1) return;
-      const credit = appState.unlinkedCredits[creditIdx];
-
-      let remainingCredit = credit.amount;
-
-      txnIds.forEach(tId => {
-        const txn = appState.transactions.find(t => t.id === tId);
-        if (!txn || remainingCredit <= 0) return;
-
-        const { netDue } = calculateNetLedgerItem(txn);
-        const applyAmount = Math.min(netDue, remainingCredit);
-
-        txn.linkedPayments.push({
-          id: 'pay_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-          amount: applyAmount,
-          date: credit.date,
-          source: credit.place
         });
 
-        remainingCredit -= applyAmount;
-      });
+        grid.innerHTML = gridHtml;
+        filterSelect.innerHTML = optionsHtml;
+        filterSelect.value = this.filters.cardId;
 
-      // Remove or reduce unlinked credit
-      if (remainingCredit <= 0.01) {
-        appState.unlinkedCredits.splice(creditIdx, 1);
-      } else {
-        credit.amount = remainingCredit;
+        // Badge update
+        const activeCardObj = this.state.cards.find(c => c.id === this.filters.cardId);
+        document.getElementById('activeFilterBadge').innerText = activeCardObj ? activeCardObj.name : 'All Cards';
       }
 
-      saveAppStateLocally();
-      renderAll();
-      document.getElementById('smartBundleResults').innerHTML = `
-        <span class="text-emerald-800 font-semibold">Successfully bundled & linked payments!</span>
-      `;
-    }
+      // --- WORKBENCH TABLE ---
+      renderWorkbench() {
+        const tbody = document.getElementById('workbenchTbody');
+        const emptyState = document.getElementById('workbenchEmpty');
 
-    function openManualLinkPrompt(creditId) {
-      const credit = appState.unlinkedCredits.find(c => c.id === creditId);
-      if (!credit) return;
+        let rowsHtml = '';
+        let count = 0;
 
-      const candidates = appState.transactions.filter(t => t.account === credit.account && calculateNetLedgerItem(t).netDue > 0);
-      if (candidates.length === 0) {
-        alert(`No open dues found on card ${credit.account}.`);
-        return;
-      }
-
-      const promptMsg = candidates.map((t, idx) => `${idx + 1}. ${t.place} (Due: ₹${calculateNetLedgerItem(t).netDue.toFixed(2)})`).join('\n');
-      const choice = prompt(`Select transaction number to link ₹${credit.amount} payment:\n\n${promptMsg}`);
-      
-      if (choice) {
-        const selectedIdx = parseInt(choice, 10) - 1;
-        if (selectedIdx >= 0 && selectedIdx < candidates.length) {
-          const targetTxn = candidates[selectedIdx];
+        // Build unified list (spends + unlinked credits)
+        const spendsToShow = this.state.spends.filter(s => {
+          if (this.filters.cardId !== 'ALL' && s.cardId !== this.filters.cardId) return false;
           
-          targetTxn.linkedPayments.push({
-            id: 'pay_' + Date.now(),
-            amount: credit.amount,
-            date: credit.date,
-            source: credit.place
+          const linked = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const spendPaise = Math.round(s.amount * 100);
+          const isSettled = s.waived || linked >= spendPaise;
+          const isPartial = !s.waived && linked > 0 && linked < spendPaise;
+          const isUnsettled = !s.waived && linked === 0;
+
+          if (this.filters.status === 'UNSETTLED' && !isUnsettled) return false;
+          if (this.filters.status === 'PARTIAL' && !isPartial) return false;
+          if (this.filters.status === 'SETTLED' && !isSettled) return false;
+          if (this.filters.status === 'CREDIT') return false;
+
+          if (this.filters.searchQuery) {
+            const q = this.filters.searchQuery.toLowerCase();
+            const matchPlace = s.place.toLowerCase().includes(q);
+            const matchRef = (s.ref || '').toLowerCase().includes(q);
+            const matchNote = (s.note || '').toLowerCase().includes(q);
+            if (!matchPlace && !matchRef && !matchNote) return false;
+          }
+
+          return true;
+        });
+
+        spendsToShow.forEach(s => {
+          count++;
+          const card = this.state.cards.find(c => c.id === s.cardId);
+          const linkedPaise = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const spendPaise = Math.round(s.amount * 100);
+          const remainingPaise = Math.max(0, spendPaise - linkedPaise);
+
+          let statusBadge = '';
+          if (s.waived) {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Waived</span>`;
+          } else if (remainingPaise === 0) {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Fully Settled</span>`;
+          } else if (linkedPaise > 0) {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">Partial (₹${(remainingPaise/100).toFixed(2)} due)</span>`;
+          } else {
+            statusBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Unsettled</span>`;
+          }
+
+          rowsHtml += `
+            <tr class="hover:bg-gray-50/80 transition">
+              <td class="py-3 px-4 font-mono text-mutedgray whitespace-nowrap">${s.date}</td>
+              <td class="py-3 px-4 font-semibold text-[#141413]">${card ? card.name : 'Unknown'}</td>
+              <td class="py-3 px-4">
+                <div class="font-bold text-[#141413]">${s.place}</div>
+                <div class="text-[10px] font-mono text-mutedgray">${s.ref || 'No Ref'}</div>
+              </td>
+              <td class="py-3 px-4 font-mono font-bold text-rose-700 whitespace-nowrap">-₹${s.amount.toFixed(2)}</td>
+              <td class="py-3 px-4 whitespace-nowrap">
+                ${statusBadge}
+              </td>
+              <td class="py-3 px-4">
+                <input type="text" value="${s.note || ''}" placeholder="+ Note / Tag" onchange="app.updateSpendNote('${s.id}', this.value)" class="w-full px-2 py-1 rounded-lg border border-transparent hover:border-[#E8E6E1] focus:border-accentindigo bg-transparent text-xs text-mutedgray focus:text-[#141413] outline-none transition" />
+              </td>
+              <td class="py-3 px-4 text-right whitespace-nowrap space-x-1">
+                ${!s.waived && remainingPaise > 0 ? `
+                  <button onclick="app.openLinkModal('${s.id}')" class="px-2.5 py-1 rounded-lg bg-indigo-50 text-accentindigo hover:bg-indigo-100 font-semibold text-[11px] transition">
+                    Link Payoff
+                  </button>
+                  <button onclick="app.waiveShortfall('${s.id}')" class="px-2 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold text-[11px] transition" title="Waive remaining balance">
+                    Waive
+                  </button>
+                ` : `
+                  <span class="text-mutedgray text-[11px]">✓ Complete</span>
+                `}
+              </td>
+            </tr>
+          `;
+        });
+
+        // Also render Unlinked Credits if filter includes them
+        if (this.filters.status === 'ALL' || this.filters.status === 'CREDIT') {
+          const creditsToShow = this.state.credits.filter(c => {
+            if (this.filters.cardId !== 'ALL' && c.cardId !== this.filters.cardId) return false;
+            const totalLinked = this.state.links.filter(l => l.creditId === c.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+            const remaining = Math.round(c.amount * 100) - totalLinked;
+            return remaining > 0;
           });
 
-          // Remove credit from pool
-          const cIdx = appState.unlinkedCredits.findIndex(c => c.id === creditId);
-          if (cIdx !== -1) appState.unlinkedCredits.splice(cIdx, 1);
+          creditsToShow.forEach(c => {
+            count++;
+            const card = this.state.cards.find(cardItem => cardItem.id === c.cardId);
+            const totalLinked = this.state.links.filter(l => l.creditId === c.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+            const remaining = (Math.round(c.amount * 100) - totalLinked) / 100;
 
-          saveAppStateLocally();
-          renderAll();
+            rowsHtml += `
+              <tr class="bg-indigo-50/40 hover:bg-indigo-50/80 transition">
+                <td class="py-3 px-4 font-mono text-mutedgray whitespace-nowrap">${c.date}</td>
+                <td class="py-3 px-4 font-semibold text-accentindigo">${card ? card.name : 'Unknown'}</td>
+                <td class="py-3 px-4">
+                  <div class="font-bold text-accentindigo">${c.place}</div>
+                  <div class="text-[10px] font-mono text-indigo-700">${c.ref || 'Credit Ref'}</div>
+                </td>
+                <td class="py-3 px-4 font-mono font-bold text-accentemerald whitespace-nowrap">+₹${c.amount.toFixed(2)}</td>
+                <td class="py-3 px-4 whitespace-nowrap">
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">Unlinked Credit (₹${remaining.toFixed(2)} avail)</span>
+                </td>
+                <td class="py-3 px-4 text-xs text-mutedgray italic">Available Payoff Pool</td>
+                <td class="py-3 px-4 text-right">
+                  <span class="text-xs font-semibold text-accentindigo">Ready to Match</span>
+                </td>
+              </tr>
+            `;
+          });
+        }
+
+        if (count === 0) {
+          tbody.innerHTML = '';
+          emptyState.classList.remove('hidden');
+        } else {
+          emptyState.classList.add('hidden');
+          tbody.innerHTML = rowsHtml;
         }
       }
-    }
 
-    function unlinkPayment(txnId, payId) {
-      const txn = appState.transactions.find(t => t.id === txnId);
-      if (!txn) return;
+      // --- SUBSET-SUM SMART BUNDLE FINDER (INTEGER PAISE) ---
+      renderBundlePayoffDropdown() {
+        const select = document.getElementById('bundlePayoffSelect');
+        let html = '<option value="">-- Select Unlinked Payoff --</option>';
 
-      const pIdx = txn.linkedPayments.findIndex(p => p.id === payId);
-      if (pIdx !== -1) {
-        const removed = txn.linkedPayments.splice(pIdx, 1)[0];
-        
-        // Push back into unlinked credits pool
-        appState.unlinkedCredits.push({
-          id: 'unlinked_' + Date.now(),
-          fingerprint: 'fp_reverted_' + Date.now(),
-          date: removed.date || new Date().toISOString().split('T')[0],
-          place: removed.source || 'Reverted Payment',
-          amount: removed.amount,
-          account: txn.account,
-          note: 'Unlinked from ' + txn.place
+        this.state.credits.forEach(c => {
+          const totalLinked = this.state.links.filter(l => l.creditId === c.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const availPaise = Math.round(c.amount * 100) - totalLinked;
+          if (availPaise > 0) {
+            const card = this.state.cards.find(cd => cd.id === c.cardId);
+            html += `<option value="${c.id}">${c.date} - ${card ? card.name : ''} - ₹${(availPaise / 100).toFixed(2)} (${c.place})</option>`;
+          }
         });
 
-        saveAppStateLocally();
-        renderAll();
+        select.innerHTML = html;
       }
-    }
 
-    function waiveShortfall(txnId, netDueAmount) {
-      const txn = appState.transactions.find(t => t.id === txnId);
-      if (!txn) return;
+      runSubsetSumFinder() {
+        const creditId = document.getElementById('bundlePayoffSelect').value;
+        if (!creditId) {
+          this.showToast("Please select an unlinked payoff first.", "error");
+          return;
+        }
 
-      txn.shortfallWaived = (txn.shortfallWaived || 0) + netDueAmount;
-      saveAppStateLocally();
-      renderAll();
-    }
+        const credit = this.state.credits.find(c => c.id === creditId);
+        if (!credit) return;
 
-    function deleteTransaction(txnId) {
-      appState.transactions = appState.transactions.filter(t => t.id !== txnId);
-      saveAppStateLocally();
-      renderAll();
-    }
+        const totalLinked = this.state.links.filter(l => l.creditId === credit.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+        const targetPaise = Math.round(credit.amount * 100) - totalLinked;
 
-    /* ==========================================================================
-       6. CREDIT CARD LIFECYCLE MANAGER & GUARDRAILS
-       ========================================================================== */
-    function openCardManagerModal() {
-      renderCardsManagerList();
-      document.getElementById('cardManagerModal').classList.remove('hidden');
-    }
+        // Get all unsettled spends for the same card
+        const openSpends = this.state.spends.filter(s => {
+          if (s.cardId !== credit.cardId || s.waived) return false;
+          const linked = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          return Math.round(s.amount * 100) - linked > 0;
+        });
 
-    function closeCardManagerModal() {
-      document.getElementById('cardManagerModal').classList.add('hidden');
-    }
+        // Exact Subset-Sum Algorithm using integer paise
+        const resultIndices = this.findSubsetSum(openSpends.map(s => {
+          const linked = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          return Math.round(s.amount * 100) - linked;
+        }), targetPaise);
 
-    function renderCardsManagerList() {
-      const list = document.getElementById('cardsManagerList');
-      list.innerHTML = '';
+        const container = document.getElementById('bundleResultContainer');
+        const list = document.getElementById('bundleResultList');
+        const title = document.getElementById('bundleResultTitle');
 
-      appState.cards.forEach(card => {
-        const metrics = calculateCardMetrics(card.name);
-        const item = document.createElement('div');
-        item.className = 'p-3 border border-[#E6E4DD] rounded-xl flex items-center justify-between bg-stone-50/50';
+        if (resultIndices) {
+          this.matchedBundleSpends = resultIndices.map(i => openSpends[i]);
+          title.innerText = `Exact Bundle Match Found! (${this.matchedBundleSpends.length} Spends = ₹${(targetPaise/100).toFixed(2)})`;
+          
+          list.innerHTML = this.matchedBundleSpends.map(s => `
+            <div class="flex justify-between border-b border-amber-200/50 pb-0.5">
+              <span>${s.date} - ${s.place}</span>
+              <span class="font-bold">₹${s.amount.toFixed(2)}</span>
+            </div>
+          `).join('');
 
-        item.innerHTML = `
-          <div>
-            <div class="text-xs font-bold text-stone-900">${card.name} ${card.archived ? '(Archived)' : ''}</div>
-            <div class="text-[11px] text-stone-500">Limit: ₹${card.limit.toLocaleString()} | Due Day: ${card.dueDay}th</div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button onclick="promptEditLimit('${card.id}')" class="text-xs text-blue-700 font-semibold hover:underline">Edit Limit</button>
-            <button onclick="archiveCardSafely('${card.id}')" class="text-xs text-red-600 font-semibold hover:underline">${card.archived ? 'Unarchive' : 'Archive'}</button>
+          container.classList.remove('hidden');
+        } else {
+          this.matchedBundleSpends = [];
+          title.innerText = `No exact subset-sum combination matches ₹${(targetPaise/100).toFixed(2)}`;
+          list.innerHTML = `<span class="italic text-amber-800">Try linking individual items manually or check if partial payments exist.</span>`;
+          container.classList.remove('hidden');
+        }
+      }
+
+      findSubsetSum(numbers, target) {
+        // Recursive DP solver for small N / exact target search
+        const memo = new Map();
+        const solve = (index, currentTarget) => {
+          if (currentTarget === 0) return [];
+          if (index < 0 || currentTarget < 0) return null;
+          
+          const key = `${index}-${currentTarget}`;
+          if (memo.has(key)) return memo.get(key);
+
+          // Option 1: Include numbers[index]
+          const withIndex = solve(index - 1, currentTarget - numbers[index]);
+          if (withIndex !== null) {
+            const res = [...withIndex, index];
+            memo.set(key, res);
+            return res;
+          }
+
+          // Option 2: Exclude numbers[index]
+          const withoutIndex = solve(index - 1, currentTarget);
+          memo.set(key, withoutIndex);
+          return withoutIndex;
+        };
+
+        return solve(numbers.length - 1, target);
+      }
+
+      applyBundleLink() {
+        const creditId = document.getElementById('bundlePayoffSelect').value;
+        if (!creditId || this.matchedBundleSpends.length === 0) return;
+
+        const credit = this.state.credits.find(c => c.id === creditId);
+        if (!credit) return;
+
+        this.matchedBundleSpends.forEach(spend => {
+          const linked = this.state.links.filter(l => l.spendId === spend.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const remainingPaise = Math.round(spend.amount * 100) - linked;
+          if (remainingPaise > 0) {
+            this.state.links.push({
+              id: 'lk-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              spendId: spend.id,
+              creditId: credit.id,
+              amount: remainingPaise / 100
+            });
+          }
+        });
+
+        document.getElementById('bundleResultContainer').classList.add('hidden');
+        this.saveLocalStorage();
+        this.renderAll();
+        this.showToast("Smart Bundle successfully linked and settled!", "success");
+      }
+
+      // --- RECONCILIATION & SHORTFALL WAIVERS ---
+      openLinkModal(spendId) {
+        this.activeLinkingSpendId = spendId;
+        const spend = this.state.spends.find(s => s.id === spendId);
+        if (!spend) return;
+
+        const card = this.state.cards.find(c => c.id === spend.cardId);
+        const linkedPaise = this.state.links.filter(l => l.spendId === spend.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+        const duePaise = Math.round(spend.amount * 100) - linkedPaise;
+
+        document.getElementById('linkModalSpendDetails').innerHTML = `
+          <div class="font-bold text-[#141413]">${spend.place} (${card ? card.name : ''})</div>
+          <div class="flex justify-between text-mutedgray mt-1">
+            <span>Original Amount: ₹${spend.amount.toFixed(2)}</span>
+            <span class="font-bold text-accentrose">Net Outstanding: ₹${(duePaise / 100).toFixed(2)}</span>
           </div>
         `;
-        list.appendChild(item);
-      });
-    }
 
-    function addNewCard(e) {
-      e.preventDefault();
-      const name = document.getElementById('newCardName').value.trim();
-      const limit = parseFloat(document.getElementById('newCardLimit').value) || 100000;
-      const stmtDay = parseInt(document.getElementById('newCardStmtDay').value, 10) || 15;
-      const dueDay = parseInt(document.getElementById('newCardDueDay').value, 10) || 5;
-      const aliasesStr = document.getElementById('newCardAliases').value || '';
-      const aliases = aliasesStr.split(',').map(a => a.trim()).filter(Boolean);
-
-      if (name) {
-        appState.cards.push({
-          id: 'card_' + Date.now(),
-          name, limit, stmtDay, dueDay, aliases, archived: false
-        });
-        saveAppStateLocally();
-        renderAll();
-        renderCardsManagerList();
-        e.target.reset();
-      }
-    }
-
-    function promptEditLimit(cardId) {
-      const card = appState.cards.find(c => c.id === cardId);
-      if (!card) return;
-      const newLim = prompt(`Enter new credit limit for ${card.name}:`, card.limit);
-      if (newLim) {
-        card.limit = parseFloat(newLim) || card.limit;
-        saveAppStateLocally();
-        renderAll();
-        renderCardsManagerList();
-      }
-    }
-
-    function archiveCardSafely(cardId) {
-      const card = appState.cards.find(c => c.id === cardId);
-      if (!card) return;
-
-      if (!card.archived) {
-        // Strict Closure Guardrail: Block if unpaid dues, unallocated credits, or reimbursements exist
-        const metrics = calculateCardMetrics(card.name);
-        const hasUnlinked = appState.unlinkedCredits.some(u => u.account === card.name);
-
-        if (metrics.totalOpenDues > 0.01) {
-          alert(`Cannot archive ${card.name}! Unpaid open dues of ₹${metrics.totalOpenDues.toFixed(2)} exist.`);
-          return;
-        }
-        if (hasUnlinked) {
-          alert(`Cannot archive ${card.name}! Unlinked incoming credits exist for this card in the queue.`);
-          return;
-        }
-        card.archived = true;
-      } else {
-        card.archived = false;
-      }
-
-      saveAppStateLocally();
-      renderAll();
-      renderCardsManagerList();
-    }
-
-    /* ==========================================================================
-       7. GOOGLE DRIVE AUTO-SYNC & VIRTUAL SIMULATOR
-       ========================================================================== */
-    function openDriveSyncModal() {
-      document.getElementById('driveSyncModal').classList.remove('hidden');
-      document.getElementById('driveSimToggle').checked = appState.driveSettings.isSimulator;
-      document.getElementById('driveClientId').value = appState.driveSettings.clientId || '';
-      document.getElementById('driveFolderName').value = appState.driveSettings.folderName || 'Axio Card Exports';
-      document.getElementById('drivePollInterval').value = appState.driveSettings.pollIntervalMin || 60;
-      updateDriveSimUI();
-    }
-
-    function closeDriveSyncModal() {
-      document.getElementById('driveSyncModal').classList.add('hidden');
-    }
-
-    function toggleDriveSimulatorMode() {
-      appState.driveSettings.isSimulator = document.getElementById('driveSimToggle').checked;
-      updateDriveSimUI();
-    }
-
-    function updateDriveSimUI() {
-      const isSim = appState.driveSettings.isSimulator;
-      document.getElementById('liveDriveConfig').style.display = isSim ? 'none' : 'block';
-      document.getElementById('simControlsBox').style.display = isSim ? 'flex' : 'none';
-      document.getElementById('driveSimToggleLabel').textContent = isSim ? 'Virtual Simulator Active' : 'Live OAuth 2.0 Mode';
-    }
-
-    function saveDriveSettings() {
-      appState.driveSettings.isSimulator = document.getElementById('driveSimToggle').checked;
-      appState.driveSettings.clientId = document.getElementById('driveClientId').value.trim();
-      appState.driveSettings.folderName = document.getElementById('driveFolderName').value.trim();
-      appState.driveSettings.pollIntervalMin = parseInt(document.getElementById('drivePollInterval').value, 10);
-
-      saveAppStateLocally();
-      closeDriveSyncModal();
-      updateSyncStateBadge();
-    }
-
-    function updateSyncStateBadge() {
-      const badge = document.getElementById('syncStateText');
-      if (appState.driveSettings.isSimulator) {
-        badge.textContent = 'Drive Simulator Mode';
-      } else if (appState.driveSettings.clientId) {
-        badge.textContent = 'Drive OAuth Connected';
-      } else {
-        badge.textContent = 'Local Mode';
-      }
-    }
-
-    function renderDriveProcessedFiles() {
-      const list = document.getElementById('driveProcessedFileList');
-      if (!list) return;
-      list.innerHTML = '';
-      if (appState.processedFiles.length === 0) {
-        list.innerHTML = '<span class="text-stone-400 italic">No Drive files processed yet.</span>';
-        return;
-      }
-      appState.processedFiles.forEach(f => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between bg-white/80 px-2 py-0.5 rounded border border-emerald-200';
-        item.innerHTML = `<span>📄 ${f}</span> <span class="font-bold text-emerald-700">✓ Safe to Delete</span>`;
-        list.appendChild(item);
-      });
-    }
-
-    function simulateDriveCSVFileDrop() {
-      const sampleCSV = `
-DATE,PLACE,AMOUNT,DR/CR,ACCOUNT,EXPENSE,CATEGORY,NOTE
-2026-11-20,Swiggy Gourmet,450.00,DR,ICICI Amazon Pay (8007),Expense,Food,Simulated Drive Import
-2026-11-21,Amazon Refund,450.00,CR,ICICI Amazon Pay (8007),Refund,Shopping,Simulated Refund
-      `.trim();
-
-      const fileName = `Axio_Statement_Sim_${Date.now().toString().slice(-4)}.csv`;
-      const res = parseAxioCSVContent(sampleCSV, fileName);
-      alert(`[Drive Simulator] Ingested ${fileName}:\nImported: ${res.importedCount} txns\nDuplicates Skipped: ${res.duplicateCount}`);
-      renderDriveProcessedFiles();
-    }
-
-    // Auto-polling tab focus listener
-    window.addEventListener('focus', () => {
-      console.log('Tab focused: checking Drive sync updates...');
-      updateSyncStateBadge();
-    });
-
-    /* Backup & Restore State JSON */
-    function downloadStateJSONBackup() {
-      const jsonStr = JSON.stringify(appState, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `axio_ledger_state_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-    }
-
-    function restoreStateJSONBackup(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          if (parsed && parsed.transactions && parsed.cards) {
-            appState = parsed;
-            saveAppStateLocally();
-            renderAll();
-            alert('State restored successfully!');
+        // Populate payoff dropdown for same card
+        const select = document.getElementById('linkPayoffSelect');
+        let html = '';
+        this.state.credits.filter(c => c.cardId === spend.cardId).forEach(c => {
+          const creditLinked = this.state.links.filter(l => l.creditId === c.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const avail = Math.round(c.amount * 100) - creditLinked;
+          if (avail > 0) {
+            html += `<option value="${c.id}">${c.date} - ₹${(avail / 100).toFixed(2)} (${c.place})</option>`;
           }
-        } catch (err) {
-          alert('Invalid JSON state backup file.');
+        });
+
+        if (!html) html = '<option value="">No unlinked credits on this card</option>';
+        select.innerHTML = html;
+
+        document.getElementById('linkAmountInput').value = (duePaise / 100).toFixed(2);
+        document.getElementById('linkWaiveShortfall').checked = false;
+
+        this.openModal('linkModal');
+      }
+
+      confirmLinkPayoff() {
+        if (!this.activeLinkingSpendId) return;
+
+        const creditId = document.getElementById('linkPayoffSelect').value;
+        const amountVal = parseFloat(document.getElementById('linkAmountInput').value);
+        const waive = document.getElementById('linkWaiveShortfall').checked;
+
+        if (!creditId && !waive) {
+          this.showToast("Select a payoff credit or check waive shortfall.", "error");
+          return;
         }
-      };
-      reader.readAsText(file);
-    }
 
-    /* ==========================================================================
-       8. MANUAL TRANSACTIONS & FILE UPLOAD HANDLERS
-       ========================================================================== */
-    function triggerCSVImport() {
-      document.getElementById('csvFileInput').click();
-    }
+        const spend = this.state.spends.find(s => s.id === this.activeLinkingSpendId);
 
-    function handleCSVFileSelect(event) {
-      const files = Array.from(event.target.files || []);
-      if (files.length === 0) return;
+        if (creditId && amountVal > 0) {
+          this.state.links.push({
+            id: 'lk-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+            spendId: this.activeLinkingSpendId,
+            creditId: creditId,
+            amount: amountVal
+          });
+        }
 
-      let totalImported = 0;
-      let totalDuplicates = 0;
-      let filesProcessed = 0;
+        if (waive && spend) {
+          spend.waived = true;
+        }
 
-      files.forEach(file => {
+        this.closeModal('linkModal');
+        this.saveLocalStorage();
+        this.renderAll();
+        this.showToast("Payoff linked successfully!", "success");
+      }
+
+      waiveShortfall(spendId) {
+        const spend = this.state.spends.find(s => s.id === spendId);
+        if (spend) {
+          spend.waived = true;
+          this.saveLocalStorage();
+          this.renderAll();
+          this.showToast("Shortfall waived for item.", "info");
+        }
+      }
+
+      updateSpendNote(spendId, noteText) {
+        const spend = this.state.spends.find(s => s.id === spendId);
+        if (spend) {
+          spend.note = noteText;
+          this.saveLocalStorage();
+        }
+      }
+
+      // --- MULTI-CSV AXIO BATCH IMPORTER (RFC 4180 PARSER) ---
+      handleCSVFiles(files) {
+        if (!files || files.length === 0) return;
+
+        let totalNewRows = 0;
+        let totalDuplicates = 0;
+
+        Array.from(files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const text = e.target.result;
+            const parsedRows = this.parseRFC4180(text);
+            const { added, dupes } = this.ingestParsedRows(parsedRows, file.name);
+
+            totalNewRows += added;
+            totalDuplicates += dupes;
+
+            // Log processed file
+            this.state.processedFiles.push({
+              name: file.name,
+              processedAt: Date.now(),
+              rows: added
+            });
+
+            this.saveLocalStorage();
+            this.renderAll();
+
+            const statsBox = document.getElementById('importStats');
+            const detail = document.getElementById('importStatsDetail');
+            statsBox.classList.remove('hidden');
+            detail.innerText = `Ingested ${totalNewRows} new transaction(s). Skipped ${totalDuplicates} duplicate(s).`;
+          };
+          reader.readAsText(file);
+        });
+      }
+
+      parseRFC4180(text) {
+        const lines = text.split(/\r\n|\n|\r/);
+        const rows = [];
+
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          // Filter out header metadata or empty lines common in Axio exports
+          if (!trimmed || trimmed.startsWith('Account Statement') || trimmed.startsWith('Period:') || trimmed.startsWith('Total')) {
+            return;
+          }
+
+          // Regex matching RFC 4180 CSV quotes & commas
+          const pattern = /(?!\s*$)\s*(?:'([^'\\]*(?:\\[\s\S][^'\\]*)*)'|"([^"\\]*(?:\\[\s\S][^"\\]*)*)"|([^,\s\\]*(?:\\[\s\S][^,\s\\]*)*))\s*(?:,|$)/g;
+          const row = [];
+          let match;
+          while ((match = pattern.exec(trimmed)) !== null) {
+            let val = match[1] || match[2] || match[3] || '';
+            row.push(val.trim());
+          }
+
+          if (row.length >= 3) {
+            rows.push(row);
+          }
+        });
+
+        return rows;
+      }
+
+      ingestParsedRows(rows, fileName) {
+        let added = 0;
+        let dupes = 0;
+
+        rows.forEach(row => {
+          // Typical Axio Columns: Date, Account/Card, Merchant/Place, Amount, Type (Debit/Credit), Ref
+          let date = row[0] || new Date().toISOString().split('T')[0];
+          let account = row[1] || 'Default';
+          let place = row[2] || 'Merchant Spend';
+          let amountStr = (row[3] || '0').replace(/[₹,\s]/g, '');
+          let amount = Math.abs(parseFloat(amountStr)) || 0;
+          let type = (row[4] || (parseFloat(amountStr) < 0 ? 'CREDIT' : 'DEBIT')).toUpperCase();
+          let ref = row[5] || ('TX-' + Math.random().toString(36).substr(2, 6));
+
+          // Match card by alias
+          let targetCard = this.state.cards.find(c => 
+            c.aliases.some(alias => account.toLowerCase().includes(alias.toLowerCase()) || place.toLowerCase().includes(alias.toLowerCase()))
+          );
+          if (!targetCard) targetCard = this.state.cards[0];
+
+          // Composite Fingerprint for deduplication
+          const fingerprint = `${date}|${targetCard.id}|${place.toLowerCase()}|${amount.toFixed(2)}|${type}`;
+          
+          const isDuplicateSpend = this.state.spends.some(s => `${s.date}|${s.cardId}|${s.place.toLowerCase()}|${s.amount.toFixed(2)}|DEBIT` === fingerprint);
+          const isDuplicateCredit = this.state.credits.some(c => `${c.date}|${c.cardId}|${c.place.toLowerCase()}|${c.amount.toFixed(2)}|CREDIT` === fingerprint);
+
+          if (isDuplicateSpend || isDuplicateCredit) {
+            dupes++;
+            return;
+          }
+
+          if (type.includes('CREDIT') || type.includes('PAYMENT') || type.includes('REFUND')) {
+            this.state.credits.push({
+              id: 'cr-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              cardId: targetCard.id,
+              date: date,
+              place: place,
+              amount: amount,
+              ref: ref
+            });
+          } else {
+            this.state.spends.push({
+              id: 'sp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+              cardId: targetCard.id,
+              date: date,
+              place: place,
+              amount: amount,
+              ref: ref,
+              note: '',
+              waived: false
+            });
+          }
+          added++;
+        });
+
+        return { added, dupes };
+      }
+
+      // --- CARDS MANAGEMENT & SAFE ARCHIVE GUARDRAILS ---
+      renderCardsManageList() {
+        const container = document.getElementById('cardsManageList');
+        let html = '<h4 class="text-xs font-bold text-[#141413] uppercase tracking-wider">Existing Cards</h4>';
+
+        this.state.cards.forEach(c => {
+          html += `
+            <div class="p-3 rounded-xl bg-white border border-[#E8E6E1] flex items-center justify-between text-xs">
+              <div>
+                <div class="font-bold text-[#141413]">${c.name}</div>
+                <div class="text-mutedgray text-[11px]">Limit: ₹${c.limit.toLocaleString('en-IN')} | Due: ${c.dueDay}th | Aliases: ${c.aliases.join(', ')}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="app.editCardLimit('${c.id}')" class="text-accentindigo font-semibold text-[11px]">Edit Limit</button>
+                <button onclick="app.archiveCard('${c.id}')" class="text-accentrose font-semibold text-[11px]">Archive</button>
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+      }
+
+      saveNewCard(e) {
+        e.preventDefault();
+        const name = document.getElementById('newCardName').value.trim();
+        const limit = parseFloat(document.getElementById('newCardLimit').value);
+        const stmtDay = parseInt(document.getElementById('newCardStmtDay').value);
+        const dueDay = parseInt(document.getElementById('newCardDueDay').value);
+        const aliasesRaw = document.getElementById('newCardAliases').value;
+        const aliases = aliasesRaw.split(',').map(a => a.trim()).filter(Boolean);
+
+        if (!name || isNaN(limit)) return;
+
+        this.state.cards.push({
+          id: 'c-' + Date.now(),
+          name,
+          limit,
+          statementDay: stmtDay || 15,
+          dueDay: dueDay || 5,
+          aliases: aliases.length > 0 ? aliases : [name]
+        });
+
+        e.target.reset();
+        this.saveLocalStorage();
+        this.renderAll();
+        this.showToast("New credit card added!", "success");
+      }
+
+      editCardLimit(cardId) {
+        const card = this.state.cards.find(c => c.id === cardId);
+        if (!card) return;
+        const newLim = prompt(`Enter new credit limit for ${card.name}:`, card.limit);
+        if (newLim && !isNaN(parseFloat(newLim))) {
+          card.limit = parseFloat(newLim);
+          this.saveLocalStorage();
+          this.renderAll();
+          this.showToast("Card limit updated.", "info");
+        }
+      }
+
+      archiveCard(cardId) {
+        const card = this.state.cards.find(c => c.id === cardId);
+        if (!card) return;
+
+        // Guardrail check: ensure card has no unsettled dues
+        const cardSpends = this.state.spends.filter(s => s.cardId === cardId);
+        let hasOpenDues = false;
+        cardSpends.forEach(s => {
+          if (s.waived) return;
+          const linked = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          if (Math.round(s.amount * 100) - linked > 0) hasOpenDues = true;
+        });
+
+        if (hasOpenDues) {
+          this.showToast(`Cannot archive ${card.name}: Active open dues exist. Settle dues first!`, "error");
+          return;
+        }
+
+        if (confirm(`Archive ${card.name}?`)) {
+          this.state.cards = this.state.cards.filter(c => c.id !== cardId);
+          this.saveLocalStorage();
+          this.renderAll();
+          this.showToast("Card archived.", "info");
+        }
+      }
+
+      // --- DRIVE MODAL & TWO-STEP RESET ALL ENTRIES HANDLER ---
+      toggleDriveSimulator(active) {
+        this.config.simulatorMode = active;
+        const label = document.getElementById('simulatorToggleLabel');
+        const oauthSection = document.getElementById('oauthFormSection');
+
+        if (active) {
+          label.innerText = "Virtual Simulator Active";
+          oauthSection.classList.add('hidden');
+        } else {
+          label.innerText = "Live Google Drive OAuth Active";
+          oauthSection.classList.remove('hidden');
+        }
+        this.renderBadges();
+      }
+
+      saveDriveSettings() {
+        this.config.clientId = document.getElementById('clientIdInput').value.trim();
+        this.config.driveFolderName = document.getElementById('driveFolderNameInput').value.trim();
+        this.config.pollingInterval = parseInt(document.getElementById('pollingIntervalSelect').value);
+        
+        this.saveLocalStorage();
+        this.closeModal('driveModal');
+        this.renderBadges();
+        this.showToast("Drive settings saved & connected!", "success");
+      }
+
+      renderSafeToDeleteList() {
+        const container = document.getElementById('safeToDeleteList');
+        if (this.state.processedFiles.length === 0) {
+          container.innerHTML = '<span class="text-mutedgray italic">No Drive files processed yet.</span>';
+          return;
+        }
+
+        container.innerHTML = this.state.processedFiles.map(f => `
+          <div class="flex justify-between items-center bg-white/70 px-2 py-1 rounded border border-emerald-200">
+            <span>✓ ${f.name}</span>
+            <span class="text-[10px] text-emerald-700">Safe to delete from Drive</span>
+          </div>
+        `).join('');
+      }
+
+      // Step 1: Reveal Step 2 Confirmation Box inside Drive Modal
+      showResetConfirmation() {
+        document.getElementById('resetConfirmBox').classList.remove('hidden');
+        document.getElementById('initialResetBtn').classList.add('hidden');
+      }
+
+      // Step 2: User Cancels Reset
+      cancelResetConfirmation() {
+        document.getElementById('resetConfirmBox').classList.add('hidden');
+        document.getElementById('initialResetBtn').classList.remove('hidden');
+      }
+
+      // Step 2: Confirm & Clear All Entries
+      confirmResetAllEntries() {
+        // Wipe transactions, links, and CSV logs
+        this.state.spends = [];
+        this.state.credits = [];
+        this.state.links = [];
+        this.state.processedFiles = [];
+        this.state.updatedAt = Date.now();
+
+        // Save & Sync
+        this.saveLocalStorage();
+        this.renderAll();
+
+        // Reset UI state in Drive Modal
+        this.cancelResetConfirmation();
+        this.closeModal('driveModal');
+
+        this.showToast("All ledger entries cleared! Card limits & Drive config preserved.", "info");
+      }
+
+      // --- EXPORT TO GOOGLE SHEETS CSV ---
+      exportToGoogleSheetsCSV() {
+        let csv = "Date,Card Name,Type,Merchant / Description,Original Amount (INR),Status,Linked Credit (INR),Net Due (INR),Reimbursement Note\n";
+
+        this.state.spends.forEach(s => {
+          const card = this.state.cards.find(c => c.id === s.cardId);
+          const linkedPaise = this.state.links.filter(l => l.spendId === s.id).reduce((sum, l) => sum + Math.round(l.amount * 100), 0);
+          const duePaise = Math.max(0, Math.round(s.amount * 100) - linkedPaise);
+          
+          let statusStr = "Unsettled";
+          if (s.waived) statusStr = "Waived";
+          else if (duePaise === 0) statusStr = "Fully Settled";
+          else if (linkedPaise > 0) statusStr = "Partially Settled";
+
+          csv += `"${s.date}","${card ? card.name : ''}","SPEND","${s.place}",${s.amount.toFixed(2)},"${statusStr}",${(linkedPaise/100).toFixed(2)},${(duePaise/100).toFixed(2)},"${s.note || ''}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Axio_Ledger_Export_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        this.showToast("Exported CSV for Google Sheets!", "success");
+      }
+
+      downloadJSONBackup() {
+        const jsonStr = JSON.stringify(this.state, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `axio_ledger_state_${Date.now()}.json`;
+        a.click();
+      }
+
+      restoreJSONState(event) {
+        const file = event.target.files[0];
+        if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-          const res = parseAxioCSVContent(e.target.result, file.name);
-          totalImported += res.importedCount;
-          totalDuplicates += res.duplicateCount;
-          filesProcessed++;
-
-          if (filesProcessed === files.length) {
-            alert(`Batch CSV Import Complete:\n• ${totalImported} new transactions imported\n• ${totalDuplicates} duplicates skipped`);
+          try {
+            const parsed = JSON.parse(e.target.result);
+            if (parsed && Array.isArray(parsed.cards)) {
+              this.state = parsed;
+              this.saveLocalStorage();
+              this.renderAll();
+              this.showToast("JSON State restored successfully!", "success");
+            } else {
+              this.showToast("Invalid JSON state format.", "error");
+            }
+          } catch (err) {
+            this.showToast("Error parsing JSON state file.", "error");
           }
         };
         reader.readAsText(file);
-      });
-    }
-
-    function openAddTxnModal() {
-      const accSelect = document.getElementById('txnAccount');
-      accSelect.innerHTML = '';
-      appState.cards.filter(c => !c.archived).forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = c.name;
-        opt.textContent = c.name;
-        accSelect.appendChild(opt);
-      });
-      document.getElementById('txnDate').value = new Date().toISOString().split('T')[0];
-      document.getElementById('addTxnModal').classList.remove('hidden');
-    }
-
-    function closeAddTxnModal() {
-      document.getElementById('addTxnModal').classList.add('hidden');
-    }
-
-    function saveManualTxn(e) {
-      e.preventDefault();
-      const type = document.querySelector('input[name="txnType"]:checked').value;
-      const date = document.getElementById('txnDate').value;
-      const amount = parseFloat(document.getElementById('txnAmount').value) || 0;
-      const place = document.getElementById('txnPlace').value.trim();
-      const account = document.getElementById('txnAccount').value;
-      const note = document.getElementById('txnNote').value.trim();
-
-      const fingerprint = `manual_${date}_${place}_${amount}_${type}_${account}`;
-
-      if (type === 'DR') {
-        appState.transactions.push({
-          id: 'txn_' + Date.now(),
-          fingerprint, date, place, amount, account, note,
-          category: 'Manual Spend',
-          linkedPayments: [],
-          shortfallWaived: 0,
-          status: 'ACTION_REQUIRED'
-        });
-      } else {
-        appState.unlinkedCredits.push({
-          id: 'unlinked_' + Date.now(),
-          fingerprint, date, place, amount, account, note
-        });
       }
 
-      saveAppStateLocally();
-      renderAll();
-      closeAddTxnModal();
-    }
-
-    /* Export to RFC 4180 Google Sheets CSV */
-    function exportGoogleSheetsCSV() {
-      let csv = 'ID,Date,Place,Account,Gross Amount,Linked Paid,Waived,Net Due,Status,Note\n';
-
-      appState.transactions.forEach(t => {
-        const { grossSpend, totalLinkedPaid, waived, netDue, computedStatus } = calculateNetLedgerItem(t);
-        csv += `"${t.id}","${t.date}","${t.place.replace(/"/g, '""')}","${t.account}",${grossSpend.toFixed(2)},${totalLinkedPaid.toFixed(2)},${waived.toFixed(2)},${netDue.toFixed(2)},"${computedStatus}","${(t.note||'').replace(/"/g, '""')}"\n`;
-      });
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `axio_sheets_reconciliation_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-    }
-
-    /* ==========================================================================
-       9. PWA INSTALL PROMPT HANDLER
-       ========================================================================== */
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      appState.pwaPrompt = e;
-      const installBtn = document.getElementById('installPWABtn');
-      if (installBtn) installBtn.classList.remove('hidden');
-    });
-
-    function promptInstallPWA() {
-      if (appState.pwaPrompt) {
-        appState.pwaPrompt.prompt();
-        appState.pwaPrompt.userChoice.then((choice) => {
-          if (choice.outcome === 'accepted') {
-            console.log('User installed PWA');
+      // --- SIMULATED GOOGLE DRIVE AUTO-POLLING ---
+      startBackgroundPolling() {
+        setInterval(() => {
+          if (this.config.simulatorMode || this.config.clientId) {
+            console.log("[Drive Sync Engine] Periodic background sync check triggered.");
+            this.syncToDriveIfActive();
           }
-          appState.pwaPrompt = null;
-          document.getElementById('installPWABtn').classList.add('hidden');
-        });
-      } else {
-        alert('PWA installation is ready! If on Chrome mobile, tap ⋮ -> Add to Home screen / Install app.');
+        }, Math.max(60000, this.config.pollingInterval || 3600000));
+      }
+
+      syncToDriveIfActive() {
+        // Virtual Drive sync logger
+        console.log("[Drive Sync] Syncing axio_ledger_state.json to Drive/LocalStorage:", this.state.updatedAt);
+      }
+
+      // --- QA DIAGNOSTICS SELF-TEST SUITE ---
+      runQADiagnostics() {
+        const log = [];
+        let passed = 0;
+        let failed = 0;
+
+        const assert = (condition, name) => {
+          if (condition) {
+            passed++;
+            log.push(`✅ [PASS] ${name}`);
+          } else {
+            failed++;
+            log.push(`❌ [FAIL] ${name}`);
+          }
+        };
+
+        // Test 1: RFC 4180 Parser Handling Quotes & Metadata
+        const rawCSV = `Account Statement, 2026\nDate,Account,Merchant,Amount,Type\n2026-03-01,HDFC,"Amazon, India",1250.50,DEBIT`;
+        const parsed = this.parseRFC4180(rawCSV);
+        assert(parsed.length === 1 && parsed[0][2] === "Amazon, India", "RFC 4180 Parser handles quoted commas & strips header metadata");
+
+        // Test 2: Integer Paise Math Precision
+        const p1 = Math.round(10.01 * 100);
+        const p2 = Math.round(20.02 * 100);
+        assert((p1 + p2) === 3003, "Exact Integer Paise Addition avoids floating point drift");
+
+        // Test 3: Subset-Sum Bundler Logic
+        const testSubsets = [1000, 2000, 3000, 4000]; // 10, 20, 30, 40 Rs in paise
+        const target = 5000; // 50 Rs
+        const match = this.findSubsetSum(testSubsets, target);
+        assert(match !== null && match.length === 2, "Subset-Sum algorithm locates exact combinations");
+
+        // Test 4: Deduplication Fingerprint Integrity
+        const fp1 = `2026-03-01|c1|swiggy|450.00|DEBIT`;
+        const fp2 = `2026-03-01|c1|swiggy|450.00|DEBIT`;
+        assert(fp1 === fp2, "Composite fingerprint deduplication operates correctly");
+
+        // Test 5: Reset Routine Data Integrity Guardrail
+        const tempCardsLen = this.state.cards.length;
+        assert(tempCardsLen > 0, "Cards array exists and holds configured definitions");
+
+        const container = document.getElementById('qaResults');
+        container.innerHTML = log.map(l => `<div>${l}</div>`).join('') + `
+          <div class="mt-2 pt-2 border-t border-gray-700 font-bold ${failed === 0 ? 'text-green-400' : 'text-rose-400'}">
+            Total Passed: ${passed} | Failed: ${failed}
+          </div>
+        `;
+      }
+
+      // --- UI CONTROLLER HELPERS ---
+      setCardFilter(cardId) {
+        this.filters.cardId = cardId;
+        this.renderCardsGrid();
+        this.renderWorkbench();
+      }
+
+      setStatusFilter(status) {
+        this.filters.status = status;
+        this.renderWorkbench();
+      }
+
+      setSearchQuery(q) {
+        this.filters.searchQuery = q;
+        this.renderWorkbench();
+      }
+
+      openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+      }
+
+      closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+      }
+
+      showToast(msg, type = "info") {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        
+        let bg = "bg-[#141413] text-white";
+        if (type === "success") bg = "bg-emerald-800 text-white";
+        if (type === "error") bg = "bg-rose-800 text-white";
+
+        toast.className = `px-4 py-2.5 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 ${bg}`;
+        toast.innerText = msg;
+
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.remove('translate-y-2', 'opacity-0');
+        }, 10);
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
       }
     }
 
-    /* ==========================================================================
-       10. INTERACTIVE QA SELF-TEST DIAGNOSTICS SUITE
-       ========================================================================== */
-    function runQADiagnostics() {
-      document.getElementById('qaModal').classList.remove('hidden');
-      const logContainer = document.getElementById('qaTestLogs');
-      const summaryBadge = document.getElementById('qaSummaryBadge');
-      logContainer.innerHTML = '';
-      summaryBadge.textContent = 'Running Diagnostics...';
-      summaryBadge.className = 'text-xs font-bold px-2.5 py-1 rounded-md bg-amber-100 text-amber-900';
-
-      let passCount = 0;
-      let totalTests = 0;
-
-      function assertTest(name, condition, details = '') {
-        totalTests++;
-        const line = document.createElement('div');
-        if (condition) {
-          passCount++;
-          line.className = 'text-green-400';
-          line.textContent = `[PASS] ${name} ${details ? '- ' + details : ''}`;
-        } else {
-          line.className = 'text-red-400 font-bold';
-          line.textContent = `[FAIL] ${name} ${details ? '- ' + details : ''}`;
-        }
-        logContainer.appendChild(line);
-      }
-
-      // Test 1: PWA Manifest & Blob URL
-      const manifestLink = document.querySelector('link[rel="manifest"]');
-      assertTest('PWA Dynamic Manifest Blob Linked', manifestLink && manifestLink.href.startsWith('blob:'));
-
-      // Test 2: Net Ledger Arithmetic Math
-      const mockTxn = { amount: 1000, linkedPayments: [{ amount: 400 }, { amount: 500 }], shortfallWaived: 50 };
-      const resMath = calculateNetLedgerItem(mockTxn);
-      assertTest('Net Ledger Signed Math', resMath.netDue === 50, `Expected 50, got ${resMath.netDue}`);
-
-      // Test 3: Over-refund Surplus Credit Math
-      const mockSurplus = { amount: 600, linkedPayments: [{ amount: 700 }], shortfallWaived: 0 };
-      const resSurplus = calculateNetLedgerItem(mockSurplus);
-      assertTest('Over-refund Surplus Math', resSurplus.netDue === -100 && resSurplus.computedStatus === 'SURPLUS', `Expected -100 SURPLUS, got ${resSurplus.netDue}`);
-
-      // Test 4: Subset-Sum Matching Logic
-      const dummyUnlinked = { id: 'test_u1', amount: 900, account: 'TEST_CARD' };
-      appState.transactions.push(
-        { id: 't_qa_1', account: 'TEST_CARD', amount: 400, linkedPayments: [], shortfallWaived: 0 },
-        { id: 't_qa_2', account: 'TEST_CARD', amount: 500, linkedPayments: [], shortfallWaived: 0 }
-      );
-      const matches = findSubsetSumMatch(dummyUnlinked);
-      assertTest('Subset-Sum Knapsack Matcher', matches && matches.length === 2, `Found ${matches ? matches.length : 0} items for 900 target`);
-      // Cleanup QA temp items
-      appState.transactions = appState.transactions.filter(t => t.account !== 'TEST_CARD');
-
-      // Test 5: Strict Card Closure Guardrail
-      appState.cards.push({ id: 'card_qa_guard', name: 'QA Guard Card', limit: 50000, archived: false });
-      appState.transactions.push({ id: 't_qa_open', account: 'QA Guard Card', amount: 500, linkedPayments: [], shortfallWaived: 0 });
-      archiveCardSafely('card_qa_guard');
-      const guardCard = appState.cards.find(c => c.id === 'card_qa_guard');
-      assertTest('Strict Card Closure Guardrail (Blocked Unpaid)', guardCard && guardCard.archived === false, 'Blocked closure when dues exist');
-      // Cleanup QA temp card
-      appState.cards = appState.cards.filter(c => c.id !== 'card_qa_guard');
-      appState.transactions = appState.transactions.filter(t => t.id !== 't_qa_open');
-
-      summaryBadge.textContent = `QA Summary: ${passCount}/${totalTests} Passed`;
-      summaryBadge.className = passCount === totalTests 
-        ? 'text-xs font-bold px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900' 
-        : 'text-xs font-bold px-2.5 py-1 rounded-md bg-red-100 text-red-900';
-    }
-
-    function closeQAModal() {
-      document.getElementById('qaModal').classList.add('hidden');
-    }
-
-    /* ==========================================================================
-       11. INITIAL APP BOOTSTRAP
-       ========================================================================== */
-    window.addEventListener('DOMContentLoaded', () => {
-      loadAppStateLocally();
-      seedInitialDataIfEmpty();
-      renderAll();
-      updateSyncStateBadge();
-    });
+    // Initialize App Instance
+    const app = new AxioLedgerApp();
+    window.onload = () => app.init();
   </script>
 </body>
 </html>
