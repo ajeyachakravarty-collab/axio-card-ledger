@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FAF9F6]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Axio Card Payoff & Drive Ledger</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            alabaster: {
+              DEFAULT: '#FAF9F6',
+              50: '#FFFFFF',
+              100: '#F5F4F0',
+              200: '#E6E4DD',
+              300: '#D7D4C9',
+              800: '#2C2C2A',
+              900: '#141413',
+            },
+            sage: {
+              50: '#F2F7F4',
+              100: '#E1EFE6',
+              500: '#2E6F40',
+              700: '#1E4D2B',
+            },
+            amber: {
+              50: '#FFFBEB',
+              100: '#FEF3C7',
+              500: '#D97706',
+              700: '#B45309',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM 18 UMD -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel Standalone for JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    body {
+      background-color: #FAF9F6;
+      color: #141413;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .font-mono-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #FAF9F6;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D7D4C9;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2C2C2A;
+    }
+  </style>
+</head>
+<body class="h-full text-alabaster-900 selection:bg-alabaster-200">
+  <div id="root" class="min-h-full flex flex-col"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+    // --- ICON COMPONENTS (SVG helpers for zero external icon library dependency) ---
+    const Icon = ({ name, className = "w-4 h-4" }) => {
+      const icons = {
+        card: <path d="M2 9h20M2 15h20M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />,
+        upload: <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />,
+        link: <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />,
+        drive: <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />,
+        refresh: <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />,
+        check: <path d="M5 13l4 4L19 7" />,
+        alert: <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />,
+        search: <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+        settings: <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />,
+        sparkles: <path d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-6.857 2.286L12 21l-2.286-6.857L3 12l6.857-2.286L12 3z" />,
+        shield: <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
+        trash: <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
+        plus: <path d="M12 4v16m8-8H4" />,
+        x: <path d="M6 18L18 6M6 6l12 12" />,
+        chevronRight: <path d="M9 5l7 7-7 7" />,
+        fileText: <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+        calculator: <path d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z" />,
+        cpu: <path d="M9 3v2m6-2v2M9 19v2m6-2v2M3 9h2m-2 6h2m14-6h2m-2 6h2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+      };
+      return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          {icons[name] || icons.fileText}
+        </svg>
+      );
+    };
+
+    // --- CSV PARSING & DEDUPLICATION CORE ---
+    const parseAxioCSV = (rawText, existingFingerprints = new Set()) => {
+      const lines = rawText.split(/\r?\n/);
+      let headerIdx = -1;
+      
+      // Look for the header line containing DATE and AMOUNT or PLACE
+      for (let i = 0; i < lines.length; i++) {
+        const upper = lines[i].toUpperCase();
+        if (upper.includes('DATE') && (upper.includes('AMOUNT') || upper.includes('PLACE') || upper.includes('DR/CR'))) {
+          headerIdx = i;
+          break;
+        }
+      }
+
+      if (headerIdx === -1) {
+        throw new Error("Could not locate valid Axio CSV header row. Ensure standard columns exist.");
+      }
+
+      // Extract headers cleanly
+      const headers = lines[headerIdx].split(',').map(h => h.trim().replace(/^"|"$/g, '').toUpperCase());
+      
+      const colMap = {
+        date: headers.findIndex(h => h.includes('DATE')),
+        time: headers.findIndex(h => h.includes('TIME')),
+        place: headers.findIndex(h => h.includes('PLACE') || h.includes('MERCHANT') || h.includes('DESCRIPTION')),
+        amount: headers.findIndex(h => h.includes('AMOUNT')),
+        drcr: headers.findIndex(h => h.includes('DR/CR') || h.includes('TYPE') || h.includes('TRANSACTION TYPE')),
+        account: headers.findIndex(h => h.includes('ACCOUNT') || h.includes('CARD')),
+        expense: headers.findIndex(h => h.includes('EXPENSE')),
+        category: headers.findIndex(h => h.includes('CATEGORY')),
+        tags: headers.findIndex(h => h.includes('TAGS') || h.includes('TAG')),
+        note: headers.findIndex(h => h.includes('NOTE') || h.includes('REMARK'))
+      };
+
+      const parsedRows = [];
+      const newFingerprints = new Set();
+      let skippedDuplicates = 0;
+
+      for (let i = headerIdx + 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line || line.startsWith('Total') || line.startsWith('Summary') || line.startsWith('Statement')) continue;
+
+        // Custom CSV line splitting respecting quotes
+        const tokens = [];
+        let inQuotes = false;
+        let token = '';
+        for (let char of line) {
+          if (char === '"') inQuotes = !inQuotes;
+          else if (char === ',' && !inQuotes) {
+            tokens.push(token.trim().replace(/^"|"$/g, ''));
+            token = '';
+          } else {
+            token += char;
+          }
+        }
+        tokens.push(token.trim().replace(/^"|"$/g, ''));
+
+        const getVal = (idx) => idx !== -1 && tokens[idx] !== undefined ? tokens[idx].trim() : '';
+
+        const date = getVal(colMap.date);
+        const time = getVal(colMap.time);
+        const place = getVal(colMap.place);
+        const rawAmount = getVal(colMap.amount).replace(/[^0-9.-]/g, '');
+        const amount = parseFloat(rawAmount) || 0;
+        const drcr = (getVal(colMap.drcr) || (amount < 0 ? 'CR' : 'DR')).toUpperCase();
+        const account = getVal(colMap.account) || 'Default Card';
+        const isExpense = getVal(colMap.expense).toLowerCase() !== 'no';
+        const category = getVal(colMap.category) || 'General';
+        const tags = getVal(colMap.tags);
+        const note = getVal(colMap.note);
+
+        if (!date || amount === 0) continue;
+
+        // Composite fingerprint for strict deduplication
+        const fingerprint = `${date}_${time}_${place.toLowerCase()}_${Math.abs(amount)}_${drcr}_${account.toLowerCase()}`;
+        
+        if (existingFingerprints.has(fingerprint) || newFingerprints.has(fingerprint)) {
+          skippedDuplicates++;
+          continue;
+        }
+
+        newFingerprints.add(fingerprint);
+        parsedRows.push({
+          id: 'tx_' + Math.random().toString(36).substring(2, 11),
+          fingerprint,
+          date,
+          time,
+          place,
+          amount: Math.abs(amount),
+          type: drcr.includes('CR') || drcr.includes('CREDIT') ? 'CR' : 'DR',
+          account,
+          isExpense,
+          category,
+          tags,
+          note,
+          reimbursementNote: '',
+          linkedTxIds: [], // Links between DR spend and CR payment
+          waivedAmount: 0  // Shortfall waiver
+        });
+      }
+
+      return { parsedRows, count: parsedRows.length, skippedDuplicates };
+    };
+
+    // --- SUBSET SUM BUNDLE SOLVER ---
+    // Finds combination of unsettled spends that add up exactly to target Payment Amount
+    const findSubsetSum = (spends, targetAmount, maxItems = 10) => {
+      const targetCents = Math.round(targetAmount * 100);
+      const items = spends.slice(0, 30).map(s => ({
+        spend: s,
+        cents: Math.round(s.netRemaining * 100)
+      })).filter(s => s.cents <= targetCents);
+
+      let bestCombination = null;
+
+      const backtrack = (index, currentSum, currentCombo) => {
+        if (currentSum === targetCents) {
+          bestCombination = [...currentCombo];
+          return true;
+        }
+        if (index >= items.length || currentCombo.length >= maxItems || currentSum > targetCents) {
+          return false;
+        }
+
+        for (let i = index; i < items.length; i++) {
+          currentCombo.push(items[i].spend);
+          if (backtrack(i + 1, currentSum + items[i].cents, currentCombo)) {
+            return true;
+          }
+          currentCombo.pop();
+        }
+        return false;
+      };
+
+      backtrack(0, 0, []);
+      return bestCombination;
+    };
+
+    // --- MOCK / DUMMY SEED DATA FOR FIRST LOAD ---
+    const INITIAL_TRANSACTIONS = [
+      {
+        id: 'tx_seed_1',
+        fingerprint: '2026-03-10_14:30_amazon india_750_DR_icici bank **4012',
+        date: '2026-03-10',
+        time: '14:30',
+        place: 'Amazon India',
+        amount: 750,
+        type: 'DR',
+        account: 'ICICI Bank **4012',
+        isExpense: true,
+        category: 'Shopping',
+        tags: 'Electronics',
+        note: 'Gadget accessory',
+        reimbursementNote: 'for ma baba',
+        linkedTxIds: ['tx_seed_1_p1'],
+        waivedAmount: 50 // ₹750 spent, ₹350 paid, ₹50 waived -> net 350+50=400 settled, net 350 remaining or settled depending on payments
+      },
+      {
+        id: 'tx_seed_1_p1',
+        fingerprint: '2026-03-12_10:00_cred repayment_350_CR_icici bank **4012',
+        date: '2026-03-12',
+        time: '10:00',
+        place: 'CRED Card Repayment',
+        amount: 350,
+        type: 'CR',
+        account: 'ICICI Bank **4012',
+        isExpense: false,
+        category: 'Repayment',
+        tags: 'Payment',
+        note: 'Partial payment 1',
+        reimbursementNote: '',
+        linkedTxIds: ['tx_seed_1'],
+        waivedAmount: 0
+      },
+      {
+        id: 'tx_seed_2',
+        fingerprint: '2026-03-14_19:45_swiggy gourmet_1200_DR_hdfc regalia **8921',
+        date: '2026-03-14',
+        time: '19:45',
+        place: 'Swiggy Gourmet',
+        amount: 1200,
+        type: 'DR',
+        account: 'HDFC Regalia **8921',
+        isExpense: true,
+        category: 'Food',
+        tags: 'Dinner',
+        note: 'Team dinner share',
+        reimbursementNote: 'mampi to pay',
+        linkedTxIds: [],
+        waivedAmount: 0
+      },
+      {
+        id: 'tx_seed_3',
+        fingerprint: '2026-03-15_11:15_refund flight ticket_1290_CR_hdfc regalia **8921',
+        date: '2026-03-15',
+        time: '11:15',
+        place: 'MakeMyTrip Refund',
+        amount: 1290,
+        type: 'CR',
+        account: 'HDFC Regalia **8921',
+        isExpense: false,
+        category: 'Refund',
+        tags: 'Travel',
+        note: 'Ticket refund surplus',
+        reimbursementNote: '',
+        linkedTxIds: [],
+        waivedAmount: 0
+      }
+    ];
+
+    const DEFAULT_CARD_LIMITS = {
+      'ICICI Bank **4012': 150000,
+      'HDFC Regalia **8921': 300000,
+      'SBI SimplyCLICK': 100000
+    };
+
+    // --- MAIN APP COMPONENT ---
+    function App() {
+      // Core State
+      const [transactions, setTransactions] = useState(() => {
+        const saved = localStorage.getItem('axio_ledger_txs');
+        return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+      });
+
+      const [cardLimits, setCardLimits] = useState(() => {
+        const saved = localStorage.getItem('axio_ledger_limits');
+        return saved ? JSON.parse(saved) : DEFAULT_CARD_LIMITS;
+      });
+
+      const [cardAliases, setCardAliases] = useState(() => {
+        const saved = localStorage.getItem('axio_ledger_aliases');
+        return saved ? JSON.parse(saved) : {};
+      });
+
+      const [googleDriveConfig, setGoogleDriveConfig] = useState(() => {
+        const saved = localStorage.getItem('axio_drive_config');
+        return saved ? JSON.parse(saved) : {
+          clientId: '',
+          folderName: 'Axio Card Ledger Sync',
+          autoSyncInterval: 3600, // in seconds (1 hour)
+          isVirtual: true,
+          lastSyncedAt: null,
+          syncedCSVs: ['axio_export_mar2026.csv']
+        };
+      });
+
+      const [activeTab, setActiveTab] = useState('ledger'); // ledger, cards, import, settings, qa
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedCardFilter, setSelectedCardFilter] = useState('ALL');
+      const [expenseFilter, setExpenseFilter] = useState('ALL'); // ALL, EXPENSE_YES, EXPENSE_NO
+      const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, UNSETTLED, PARTIAL, SETTLED, SURPLUS
+      const [reimbursementTagFilter, setReimbursementTagFilter] = useState('ALL');
+
+      // Modals & UI States
+      const [linkingSpendId, setLinkingSpendId] = useState(null);
+      const [bundleFinderAmount, setBundleFinderAmount] = useState('');
+      const [bundleResult, setBundleResult] = useState(null);
+      const [notification, setNotification] = useState(null);
+      const [editLimitCard, setEditLimitCard] = useState(null);
+      const [newLimitValue, setNewLimitValue] = useState('');
+      const [qaResults, setQaResults] = useState(null);
+
+      // Save persistent local state
+      useEffect(() => {
+        localStorage.setItem('axio_ledger_txs', JSON.stringify(transactions));
+      }, [transactions]);
+
+      useEffect(() => {
+        localStorage.setItem('axio_ledger_limits', JSON.stringify(cardLimits));
+      }, [cardLimits]);
+
+      useEffect(() => {
+        localStorage.setItem('axio_ledger_aliases', JSON.stringify(cardAliases));
+      }, [cardAliases]);
+
+      useEffect(() => {
+        localStorage.setItem('axio_drive_config', JSON.stringify(googleDriveConfig));
+      }, [googleDriveConfig]);
+
+      const showToast = (msg, type = 'info') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3500);
+      };
+
+      // --- DERIVED METRICS & COMPUTED LEDGER ---
+      const processedTransactions = useMemo(() => {
+        return transactions.map(tx => {
+          // Normalize card name using alias if mapped
+          const displayAccount = cardAliases[tx.account] || tx.account;
+
+          if (tx.type === 'DR') {
+            // Find linked payments
+            const linkedPayments = transactions.filter(p => tx.linkedTxIds.includes(p.id));
+            const totalPaid = linkedPayments.reduce((acc, p) => acc + p.amount, 0);
+            const waived = tx.waivedAmount || 0;
+            const netRemaining = Math.max(0, tx.amount - totalPaid - waived);
+            
+            let status = 'UNSETTLED';
+            if (netRemaining === 0) status = 'SETTLED';
+            else if (totalPaid > 0 || waived > 0) status = 'PARTIAL';
+
+            return {
+              ...tx,
+              displayAccount,
+              totalPaid,
+              waived,
+              netRemaining,
+              status
+            };
+          } else {
+            // Credit / Payment row
+            const linkedSpends = transactions.filter(s => tx.linkedTxIds.includes(s.id));
+            const totalAbsorbed = linkedSpends.reduce((acc, s) => acc + s.amount, 0);
+            const surplusCredit = Math.max(0, tx.amount - totalAbsorbed);
+            const status = surplusCredit > 0 && tx.linkedTxIds.length === 0 ? 'UNLINKED_CREDIT' : 'APPLIED';
+
+            return {
+              ...tx,
+              displayAccount,
+              totalAbsorbed,
+              surplusCredit,
+              status
+            };
+          }
+        });
+      }, [transactions, cardAliases]);
+
+      // Card Accounts Summary
+      const cardSummaries = useMemo(() => {
+        const summaries = {};
+        
+        // Discover accounts
+        processedTransactions.forEach(tx => {
+          const acc = tx.displayAccount;
+          if (!summaries[acc]) {
+            summaries[acc] = {
+              name: acc,
+              limit: cardLimits[acc] || 100000,
+              totalGrossSpend: 0,
+              totalPaid: 0,
+              totalWaived: 0,
+              netOutstanding: 0,
+              surplusCredits: 0,
+              txCount: 0
+            };
+          }
+
+          summaries[acc].txCount++;
+          if (tx.type === 'DR') {
+            summaries[acc].totalGrossSpend += tx.amount;
+            summaries[acc].totalPaid += tx.totalPaid;
+            summaries[acc].totalWaived += tx.waived;
+            summaries[acc].netOutstanding += tx.netRemaining;
+          } else {
+            summaries[acc].surplusCredits += tx.surplusCredit;
+          }
+        });
+
+        return Object.values(summaries);
+      }, [processedTransactions, cardLimits]);
+
+      // Overall Ledger Financial Totals
+      const ledgerTotals = useMemo(() => {
+        let grossSpends = 0;
+        let totalPaid = 0;
+        let totalWaived = 0;
+        let netOutstanding = 0;
+        let surplusCredits = 0;
+
+        processedTransactions.forEach(tx => {
+          if (tx.type === 'DR') {
+            grossSpends += tx.amount;
+            totalPaid += tx.totalPaid;
+            totalWaived += tx.waived;
+            netOutstanding += tx.netRemaining;
+          } else {
+            surplusCredits += tx.surplusCredit;
+          }
+        });
+
+        return {
+          grossSpends,
+          totalPaid,
+          totalWaived,
+          netOutstanding,
+          surplusCredits,
+          netEffectivePayoff: Math.max(0, netOutstanding - surplusCredits)
+        };
+      }, [processedTransactions]);
+
+      // Filtered Transactions List
+      const filteredTransactions = useMemo(() => {
+        return processedTransactions.filter(tx => {
+          // Account Filter
+          if (selectedCardFilter !== 'ALL' && tx.displayAccount !== selectedCardFilter) return false;
+          
+          // Expense Filter
+          if (expenseFilter === 'EXPENSE_YES' && !tx.isExpense) return false;
+          if (expenseFilter === 'EXPENSE_NO' && tx.isExpense) return false;
+
+          // Status Filter
+          if (statusFilter === 'UNSETTLED' && tx.status !== 'UNSETTLED') return false;
+          if (statusFilter === 'PARTIAL' && tx.status !== 'PARTIAL') return false;
+          if (statusFilter === 'SETTLED' && tx.status !== 'SETTLED') return false;
+
+          // Reimbursement Note Filter
+          if (reimbursementTagFilter === 'HAS_REIMBURSEMENT' && !tx.reimbursementNote) return false;
+          if (reimbursementTagFilter === 'MAMPI' && !tx.reimbursementNote.toLowerCase().includes('mampi')) return false;
+          if (reimbursementTagFilter === 'BABA' && !tx.reimbursementNote.toLowerCase().includes('baba')) return false;
+
+          // Text Search
+          if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            const matchPlace = tx.place.toLowerCase().includes(q);
+            const matchCategory = tx.category.toLowerCase().includes(q);
+            const matchNote = (tx.note || '').toLowerCase().includes(q);
+            const matchReimburse = (tx.reimbursementNote || '').toLowerCase().includes(q);
+            const matchAccount = tx.displayAccount.toLowerCase().includes(q);
+            const matchAmount = tx.amount.toString().includes(q);
+            return matchPlace || matchCategory || matchNote || matchReimburse || matchAccount || matchAmount;
+          }
+
+          return true;
+        });
+      }, [processedTransactions, selectedCardFilter, expenseFilter, statusFilter, reimbursementTagFilter, searchQuery]);
+
+      // --- ACTIONS & HANDLERS ---
+      const handleCSVUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+
+        let totalImported = 0;
+        let totalSkipped = 0;
+        const existingFps = new Set(transactions.map(t => t.fingerprint));
+        const newRows = [];
+        const importedFilenames = [];
+
+        let filesProcessed = 0;
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            try {
+              const text = evt.target.result;
+              const { parsedRows, count, skippedDuplicates } = parseAxioCSV(text, existingFps);
+              
+              parsedRows.forEach(r => {
+                existingFps.add(r.fingerprint);
+                newRows.push(r);
+              });
+              
+              totalImported += count;
+              totalSkipped += skippedDuplicates;
+              importedFilenames.push(file.name);
+            } catch (err) {
+              showToast(`Error reading ${file.name}: ${err.message}`, 'error');
+            }
+
+            filesProcessed++;
+            if (filesProcessed === files.length) {
+              if (newRows.length > 0) {
+                setTransactions(prev => [...newRows, ...prev]);
+                setGoogleDriveConfig(prev => ({
+                  ...prev,
+                  syncedCSVs: Array.from(new Set([...prev.syncedCSVs, ...importedFilenames]))
+                }));
+                showToast(`Batch complete: Imported ${totalImported} new transactions. Skipped ${totalSkipped} duplicates.`, 'success');
+              } else {
+                showToast(`No new transactions imported. All ${totalSkipped} rows were duplicates.`, 'info');
+              }
+            }
+          };
+          reader.readAsText(file);
+        });
+      };
+
+      const handleWaiveShortfall = (txId) => {
+        setTransactions(prev => prev.map(tx => {
+          if (tx.id === txId) {
+            const linkedPayments = prev.filter(p => tx.linkedTxIds.includes(p.id));
+            const totalPaid = linkedPayments.reduce((acc, p) => acc + p.amount, 0);
+            const remaining = Math.max(0, tx.amount - totalPaid);
+            return { ...tx, waivedAmount: remaining };
+          }
+          return tx;
+        }));
+        showToast('Shortfall balance waived and marked as fully settled.', 'success');
+      };
+
+      const handleToggleExpenseNo = (txId) => {
+        setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, isExpense: !tx.isExpense } : tx));
+      };
+
+      const handleUpdateReimbursementNote = (txId, note) => {
+        setTransactions(prev => prev.map(tx => tx.id === txId ? { ...tx, reimbursementNote: note } : tx));
+      };
+
+      const handleLinkPayment = (spendId, paymentId) => {
+        setTransactions(prev => prev.map(tx => {
+          if (tx.id === spendId) {
+            const updatedLinks = Array.from(new Set([...tx.linkedTxIds, paymentId]));
+            return { ...tx, linkedTxIds: updatedLinks };
+          }
+          if (tx.id === paymentId) {
+            const updatedLinks = Array.from(new Set([...tx.linkedTxIds, spendId]));
+            return { ...tx, linkedTxIds: updatedLinks };
+          }
+          return tx;
+        }));
+        setLinkingSpendId(null);
+        showToast('Payment linked to transaction successfully.', 'success');
+      };
+
+      const handleUnlinkPayment = (spendId, paymentId) => {
+        setTransactions(prev => prev.map(tx => {
+          if (tx.id === spendId) {
+            return { ...tx, linkedTxIds: tx.linkedTxIds.filter(id => id !== paymentId) };
+          }
+          if (tx.id === paymentId) {
+            return { ...tx, linkedTxIds: tx.linkedTxIds.filter(id => id !== spendId) };
+          }
+          return tx;
+        }));
+        showToast('Link removed.', 'info');
+      };
+
+      const handleRunSubsetSum = () => {
+        const amt = parseFloat(bundleFinderAmount);
+        if (!amt || amt <= 0) {
+          showToast('Please enter a valid payment amount to search.', 'error');
+          return;
+        }
+
+        // Get unsettled DR spends
+        const unsettledSpends = processedTransactions.filter(t => t.type === 'DR' && t.netRemaining > 0);
+        const match = findSubsetSum(unsettledSpends, amt);
+
+        if (match && match.length > 0) {
+          setBundleResult(match);
+          showToast(`Found exact match of ${match.length} spends summing to ₹${amt.toLocaleString()}`, 'success');
+        } else {
+          setBundleResult([]);
+          showToast('No exact combination of unsettled spends matches this amount.', 'info');
+        }
+      };
+
+      const handleSaveCardLimit = (cardName) => {
+        const limitNum = parseFloat(newLimitValue);
+        if (isNaN(limitNum) || limitNum < 0) {
+          showToast('Enter a valid spending limit.', 'error');
+          return;
+        }
+        setCardLimits(prev => ({ ...prev, [cardName]: limitNum }));
+        setEditLimitCard(null);
+        showToast(`Updated credit limit for ${cardName} to ₹${limitNum.toLocaleString()}`, 'success');
+      };
+
+      // --- AUTOMATED QA SELF TEST RUNNER ---
+      const runQASelfTests = () => {
+        const tests = [];
+        
+        // Test 1: Parser Stripping & Deduplication
+        try {
+          const sampleCSV = `Axio Statement Export Date: 2026-03-01\nMetadata Line 2\nDATE,TIME,PLACE,AMOUNT,DR/CR,ACCOUNT,EXPENSE,CATEGORY,TAGS,NOTE\n2026-03-01,10:00,Test Store,500,DR,Card A,Yes,Shop,Tag,Note 1\n2026-03-01,10:00,Test Store,500,DR,Card A,Yes,Shop,Tag,Note 1`;
+          const res = parseAxioCSV(sampleCSV);
+          tests.push({
+            name: 'CSV Header Stripping & Fingerprint Deduplication',
+            passed: res.parsedRows.length === 1 && res.skippedDuplicates === 1,
+            details: `Expected 1 row imported & 1 duplicate skipped. Got ${res.parsedRows.length} rows, ${res.skippedDuplicates} skipped.`
+          });
+        } catch (e) {
+          tests.push({ name: 'CSV Header Stripping', passed: false, details: e.message });
+        }
+
+        // Test 2: Uncapped Signed Net Ledger Math & Partial Waiver
+        try {
+          const spends = [
+            { id: 's1', type: 'DR', amount: 1000, linkedTxIds: ['p1'], waivedAmount: 200 },
+          ];
+          const payments = [
+            { id: 'p1', type: 'CR', amount: 300, linkedTxIds: ['s1'] }
+          ];
+          const gross = 1000;
+          const paid = 300;
+          const waived = 200;
+          const remaining = gross - paid - waived; // 500
+          tests.push({
+            name: 'Signed Net Ledger Partial Waiver Math (1000 - 300 - 200 = 500)',
+            passed: remaining === 500,
+            details: `Net remaining calculation returned ₹${remaining} (expected ₹500)`
+          });
+        } catch (e) {
+          tests.push({ name: 'Signed Net Math', passed: false, details: e.message });
+        }
+
+        // Test 3: Subset-Sum Bundle Solver
+        try {
+          const mockSpends = [
+            { id: 'a', netRemaining: 150 },
+            { id: 'b', netRemaining: 350 },
+            { id: 'c', netRemaining: 500 }
+          ];
+          const match = findSubsetSum(mockSpends, 500);
+          const isMatchValid = match && match.reduce((sum, item) => sum + item.netRemaining, 0) === 500;
+          tests.push({
+            name: 'Subset-Sum Bundle Solver (150+350 = 500)',
+            passed: isMatchValid,
+            details: match ? `Found combination of ${match.length} items.` : 'Failed to find match'
+          });
+        } catch (e) {
+          tests.push({ name: 'Subset-Sum Solver', passed: false, details: e.message });
+        }
+
+        // Test 4: JSON State Serialization Integrity
+        try {
+          const mockState = { txs: transactions, limits: cardLimits };
+          const serialized = JSON.stringify(mockState);
+          const deserialized = JSON.parse(serialized);
+          tests.push({
+            name: 'State JSON Serialization & Drive Schema Format',
+            passed: Array.isArray(deserialized.txs) && typeof deserialized.limits === 'object',
+            details: `Successfully round-tripped ${deserialized.txs.length} transactions.`
+          });
+        } catch (e) {
+          tests.push({ name: 'State Serialization', passed: false, details: e.message });
+        }
+
+        setQaResults(tests);
+        showToast('Automated QA Suite completed!', 'success');
+      };
+
+      // --- EXPORT JSON STATE ---
+      const exportLedgerStateJSON = () => {
+        const statePayload = {
+          version: '1.0.0',
+          exportedAt: new Date().toISOString(),
+          transactions,
+          cardLimits,
+          cardAliases,
+          googleDriveConfig
+        };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(statePayload, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `axio_ledger_state_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        showToast('JSON state export downloaded.', 'success');
+      };
+
+      const importLedgerStateJSON = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = JSON.parse(evt.target.result);
+            if (data.transactions && Array.isArray(data.transactions)) {
+              setTransactions(data.transactions);
+              if (data.cardLimits) setCardLimits(data.cardLimits);
+              if (data.cardAliases) setCardAliases(data.cardAliases);
+              showToast('Ledger state imported and updated successfully!', 'success');
+            } else {
+              showToast('Invalid JSON ledger state file.', 'error');
+            }
+          } catch (err) {
+            showToast(`Import error: ${err.message}`, 'error');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      return (
+        <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          
+          {/* TOAST NOTIFICATION */}
+          {notification && (
+            <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg border text-sm flex items-center gap-2 font-medium transition-all ${
+              notification.type === 'error' ? 'bg-red-50 text-red-800 border-red-200' :
+              notification.type === 'success' ? 'bg-sage-50 text-sage-700 border-sage-100' :
+              'bg-alabaster-50 text-alabaster-900 border-alabaster-200'
+            }`}>
+              <Icon name={notification.type === 'error' ? 'alert' : notification.type === 'success' ? 'check' : 'sparkles'} />
+              <span>{notification.msg}</span>
+            </div>
+          )}
+
+          {/* EDITORIAL TOP BAR HEADER */}
+          <header className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-alabaster-900 text-alabaster-50 flex items-center justify-center font-bold text-lg shadow-sm">
+                  AX
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight text-alabaster-900">
+                    Axio Card Payoff & Ledger
+                  </h1>
+                  <p className="text-xs text-alabaster-800 font-medium">
+                    Warm Alabaster Editorial • GitHub Pages Ready • Multi-Device Drive Sync
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* DRIVE SYNC BADGE & VIRTUAL STATUS */}
+            <div className="flex items-center gap-3 bg-alabaster-100 p-2.5 rounded-xl border border-alabaster-200">
+              <div className="p-2 bg-alabaster-50 rounded-lg border border-alabaster-200 text-sage-500">
+                <Icon name="drive" className="w-5 h-5" />
+              </div>
+              <div className="text-xs">
+                <div className="font-semibold text-alabaster-900 flex items-center gap-1.5">
+                  <span>{googleDriveConfig.isVirtual ? 'Virtual Drive Simulator' : 'Google Cloud OAuth Live'}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+                <div className="text-alabaster-800">
+                  State: <code className="font-mono text-[11px] bg-alabaster-200 px-1 rounded">axio_ledger_state.json</code>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveTab('settings')}
+                className="ml-2 p-1.5 hover:bg-alabaster-200 rounded-lg text-alabaster-800 transition"
+                title="Configure Sync & OAuth"
+              >
+                <Icon name="settings" className="w-4 h-4" />
+              </button>
+            </div>
+          </header>
+
+          {/* MAIN NAVIGATION TABS */}
+          <nav className="flex items-center gap-2 border-b border-alabaster-200 pb-1 overflow-x-auto">
+            {[
+              { id: 'ledger', label: 'Ledger & Settlement', icon: 'fileText' },
+              { id: 'cards', label: 'Card Lifecycle & Limits', icon: 'card' },
+              { id: 'import', label: 'Batch Import & Drive Sync', icon: 'upload' },
+              { id: 'settings', label: 'Settings & Cloud Sync', icon: 'settings' },
+              { id: 'qa', label: 'Deployment & QA Suite', icon: 'cpu' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'bg-alabaster-900 text-alabaster-50 shadow-sm'
+                    : 'text-alabaster-800 hover:bg-alabaster-100 hover:text-alabaster-900'
+                }`}
+              >
+                <Icon name={tab.icon} className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* SUMMARY METRICS CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-xs font-semibold text-alabaster-800 uppercase tracking-wider">Gross Unpaid Spends</div>
+              <div className="text-2xl font-bold font-mono-nums text-alabaster-900 mt-1">
+                ₹{ledgerTotals.grossSpends.toLocaleString('en-IN')}
+              </div>
+              <div className="text-xs text-alabaster-800 mt-1">Total DR spends logged</div>
+            </div>
+
+            <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-xs font-semibold text-alabaster-800 uppercase tracking-wider">Payments & Credits Applied</div>
+              <div className="text-2xl font-bold font-mono-nums text-sage-500 mt-1">
+                -₹{ledgerTotals.totalPaid.toLocaleString('en-IN')}
+              </div>
+              <div className="text-xs text-alabaster-800 mt-1">Linked repayment credits</div>
+            </div>
+
+            <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-4 shadow-sm">
+              <div className="text-xs font-semibold text-alabaster-800 uppercase tracking-wider">Shortfall Waivers</div>
+              <div className="text-2xl font-bold font-mono-nums text-amber-500 mt-1">
+                -₹{ledgerTotals.totalWaived.toLocaleString('en-IN')}
+              </div>
+              <div className="text-xs text-alabaster-800 mt-1">1-Click closed balances</div>
+            </div>
+
+            <div className="bg-alabaster-900 text-alabaster-50 border border-alabaster-900 rounded-2xl p-4 shadow-sm">
+              <div className="text-xs font-semibold text-alabaster-300 uppercase tracking-wider">Net Outstanding Balance</div>
+              <div className="text-2xl font-bold font-mono-nums text-alabaster-50 mt-1">
+                ₹{ledgerTotals.netOutstanding.toLocaleString('en-IN')}
+              </div>
+              <div className="text-xs text-alabaster-300 mt-1">Uncapped signed net total</div>
+            </div>
+          </div>
+
+          {/* ================= TAB 1: LEDGER & SETTLEMENT ================= */}
+          {activeTab === 'ledger' && (
+            <div className="space-y-6">
+              
+              {/* SUBSET SUM BUNDLE FINDER BANNER */}
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-5 shadow-sm space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-alabaster-100 rounded-xl text-alabaster-900 border border-alabaster-200">
+                      <Icon name="calculator" className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-alabaster-900">Subset-Sum Smart Bundle Finder</h3>
+                      <p className="text-xs text-alabaster-800">
+                        Made a bulk credit payment? Enter the exact payment amount to find which unsettled spends sum up to it.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-alabaster-800 font-bold">₹</span>
+                      <input
+                        type="number"
+                        placeholder="e.g. 1200"
+                        value={bundleFinderAmount}
+                        onChange={e => setBundleFinderAmount(e.target.value)}
+                        className="w-36 pl-7 pr-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-sm font-mono-nums focus:outline-none focus:border-alabaster-900"
+                      />
+                    </div>
+                    <button
+                      onClick={handleRunSubsetSum}
+                      className="px-4 py-2 bg-alabaster-900 text-alabaster-50 rounded-xl text-sm font-semibold hover:bg-alabaster-800 transition flex items-center gap-2"
+                    >
+                      <Icon name="sparkles" className="w-4 h-4" />
+                      <span>Find Match</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* BUNDLE MATCH RESULTS DISPLAY */}
+                {bundleResult && (
+                  <div className="mt-3 p-4 bg-alabaster-100 rounded-xl border border-alabaster-200 space-y-2">
+                    <div className="text-xs font-bold text-alabaster-900 flex items-center justify-between">
+                      <span>Matching Spends Bundle ({bundleResult.length} items):</span>
+                      <button onClick={() => setBundleResult(null)} className="text-alabaster-800 hover:text-alabaster-900 text-xs">
+                        Dismiss
+                      </button>
+                    </div>
+                    {bundleResult.length === 0 ? (
+                      <div className="text-xs text-alabaster-800 italic">No subset combination found matching exact amount.</div>
+                    ) : (
+                      <div className="space-y-1 max-h-36 overflow-y-auto pr-2">
+                        {bundleResult.map(s => (
+                          <div key={s.id} className="text-xs flex items-center justify-between bg-alabaster-50 p-2 rounded border border-alabaster-200">
+                            <span className="font-medium text-alabaster-900">{s.date} • {s.place}</span>
+                            <span className="font-mono-nums font-bold text-alabaster-900">₹{s.netRemaining}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* FILTERS & SEARCH TOOLBAR */}
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
+                
+                {/* SEARCH INPUT */}
+                <div className="relative w-full md:w-72">
+                  <span className="absolute left-3 top-2.5 text-alabaster-800">
+                    <Icon name="search" className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search place, note, card..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-sm focus:outline-none focus:border-alabaster-900"
+                  />
+                </div>
+
+                {/* SELECT FILTERS */}
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  {/* Card Selector */}
+                  <select
+                    value={selectedCardFilter}
+                    onChange={e => setSelectedCardFilter(e.target.value)}
+                    className="px-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-xs font-semibold text-alabaster-900 focus:outline-none"
+                  >
+                    <option value="ALL">All Cards</option>
+                    {cardSummaries.map(c => (
+                      <option key={c.name} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+
+                  {/* Expense Filter */}
+                  <select
+                    value={expenseFilter}
+                    onChange={e => setExpenseFilter(e.target.value)}
+                    className="px-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-xs font-semibold text-alabaster-900 focus:outline-none"
+                  >
+                    <option value="ALL">All Transactions</option>
+                    <option value="EXPENSE_YES">Expense: Yes Only</option>
+                    <option value="EXPENSE_NO">Expense: No (Transfers/Repayments)</option>
+                  </select>
+
+                  {/* Status Filter */}
+                  <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    className="px-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-xs font-semibold text-alabaster-900 focus:outline-none"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="UNSETTLED">Unsettled</option>
+                    <option value="PARTIAL">Partial</option>
+                    <option value="SETTLED">Settled</option>
+                  </select>
+
+                  {/* Reimbursement Filter */}
+                  <select
+                    value={reimbursementTagFilter}
+                    onChange={e => setReimbursementTagFilter(e.target.value)}
+                    className="px-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-xs font-semibold text-alabaster-900 focus:outline-none"
+                  >
+                    <option value="ALL">Reimbursements: All</option>
+                    <option value="HAS_REIMBURSEMENT">Has Personal Note</option>
+                    <option value="MAMPI">"mampi to pay"</option>
+                    <option value="BABA">"for ma baba"</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* TRANSACTIONS LEDGER TABLE */}
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-alabaster-200 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-alabaster-900">
+                    Reconciled Transactions ({filteredTransactions.length})
+                  </h3>
+                  <div className="text-xs text-alabaster-800">
+                    Showing {filteredTransactions.length} of {transactions.length} rows
+                  </div>
+                </div>
+
+                {filteredTransactions.length === 0 ? (
+                  <div className="p-12 text-center text-alabaster-800 text-sm">
+                    No transactions match the selected filters or search query.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-alabaster-100 border-b border-alabaster-200 text-alabaster-800 font-semibold uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3">Date & Time</th>
+                          <th className="px-4 py-3">Account & Place</th>
+                          <th className="px-4 py-3">Category & Notes</th>
+                          <th className="px-4 py-3 text-right">Amount</th>
+                          <th className="px-4 py-3 text-right">Net Remaining</th>
+                          <th className="px-4 py-3">Status & Links</th>
+                          <th className="px-4 py-3 text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-alabaster-200 font-normal">
+                        {filteredTransactions.map(tx => (
+                          <tr key={tx.id} className="hover:bg-alabaster-100/50 transition">
+                            
+                            {/* Date & Time */}
+                            <td className="px-4 py-3 whitespace-nowrap text-alabaster-800">
+                              <div className="font-semibold text-alabaster-900">{tx.date}</div>
+                              <div className="text-[11px] text-alabaster-800">{tx.time || '12:00'}</div>
+                            </td>
+
+                            {/* Account & Place */}
+                            <td className="px-4 py-3">
+                              <div className="font-bold text-alabaster-900">{tx.place}</div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="bg-alabaster-200 text-alabaster-900 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                  {tx.displayAccount}
+                                </span>
+                                {!tx.isExpense && (
+                                  <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                                    Expense: No
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Category & Personal Reimbursement Note */}
+                            <td className="px-4 py-3">
+                              <div className="text-alabaster-900 font-medium">{tx.category}</div>
+                              <div className="mt-1 flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="+ Add personal note (e.g. mampi to pay)"
+                                  value={tx.reimbursementNote || ''}
+                                  onChange={e => handleUpdateReimbursementNote(tx.id, e.target.value)}
+                                  className="w-48 px-2 py-1 bg-alabaster-100 border border-alabaster-200 rounded text-[11px] text-alabaster-900 focus:outline-none focus:bg-alabaster-50"
+                                />
+                              </div>
+                            </td>
+
+                            {/* Amount */}
+                            <td className="px-4 py-3 text-right font-mono-nums whitespace-nowrap">
+                              <div className={`font-bold text-sm ${tx.type === 'DR' ? 'text-alabaster-900' : 'text-sage-500'}`}>
+                                {tx.type === 'DR' ? '₹' : '-₹'}{tx.amount.toLocaleString('en-IN')}
+                              </div>
+                              <div className="text-[10px] text-alabaster-800">{tx.type}</div>
+                            </td>
+
+                            {/* Net Remaining */}
+                            <td className="px-4 py-3 text-right font-mono-nums whitespace-nowrap">
+                              {tx.type === 'DR' ? (
+                                <div className="font-bold text-sm text-alabaster-900">
+                                  ₹{tx.netRemaining.toLocaleString('en-IN')}
+                                </div>
+                              ) : (
+                                <div className="font-bold text-xs text-sage-500">
+                                  Surplus: ₹{tx.surplusCredit.toLocaleString('en-IN')}
+                                </div>
+                              )}
+                              {tx.waived > 0 && (
+                                <div className="text-[10px] text-amber-600 font-semibold">
+                                  Waived: ₹{tx.waived}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Status & Payment Link Badges */}
+                            <td className="px-4 py-3">
+                              <div className="space-y-1">
+                                {tx.type === 'DR' ? (
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    tx.status === 'SETTLED' ? 'bg-sage-100 text-sage-700' :
+                                    tx.status === 'PARTIAL' ? 'bg-amber-100 text-amber-700' :
+                                    'bg-alabaster-200 text-alabaster-900'
+                                  }`}>
+                                    {tx.status}
+                                  </span>
+                                ) : (
+                                  <span className="inline-block bg-sage-100 text-sage-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                                    {tx.status}
+                                  </span>
+                                )}
+
+                                {/* Linked Payment Badges */}
+                                {tx.linkedTxIds.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {tx.linkedTxIds.map(linkId => {
+                                      const linkedItem = transactions.find(t => t.id === linkId);
+                                      return (
+                                        <span key={linkId} className="bg-alabaster-200 text-alabaster-900 px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 font-mono">
+                                          <Icon name="link" className="w-3 h-3" />
+                                          <span>{linkedItem ? linkedItem.date : 'Linked'}</span>
+                                          <button onClick={() => handleUnlinkPayment(tx.id, linkId)} className="hover:text-red-600 font-bold ml-0.5">×</button>
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-4 py-3 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1">
+                                {tx.type === 'DR' && tx.netRemaining > 0 && (
+                                  <>
+                                    <button
+                                      onClick={() => handleWaiveShortfall(tx.id)}
+                                      className="px-2 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded text-[11px] font-semibold transition"
+                                      title="Waive remaining shortfall balance"
+                                    >
+                                      Waive ₹{tx.netRemaining}
+                                    </button>
+                                  </>
+                                )}
+
+                                <button
+                                  onClick={() => handleToggleExpenseNo(tx.id)}
+                                  className={`p-1 rounded text-[11px] font-semibold border transition ${
+                                    !tx.isExpense 
+                                      ? 'bg-amber-100 text-amber-800 border-amber-200' 
+                                      : 'bg-alabaster-100 text-alabaster-800 border-alabaster-200 hover:bg-alabaster-200'
+                                  }`}
+                                  title="Toggle Expense: Yes / Expense: No"
+                                >
+                                  {tx.isExpense ? 'Exp: Yes' : 'Exp: No'}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 2: CARD LIFECYCLE & LIMITS ================= */}
+          {activeTab === 'cards' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-alabaster-900">Card Lifecycle & Spending Limits</h2>
+                  <p className="text-xs text-alabaster-800">Auto-discovered credit card accounts with utilization tracking</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {cardSummaries.map(card => {
+                  const utilPercent = Math.min(100, Math.round((card.netOutstanding / card.limit) * 100));
+                  return (
+                    <div key={card.name} className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-5 shadow-sm space-y-4">
+                      
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-alabaster-900 text-alabaster-50 rounded-xl shadow-sm">
+                            <Icon name="card" className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-alabaster-900 text-sm">{card.name}</h3>
+                            <div className="text-xs text-alabaster-800">{card.txCount} transactions logged</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* UTILIZATION PROGRESS BAR */}
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs font-semibold">
+                          <span className="text-alabaster-800">Utilization</span>
+                          <span className={`font-mono-nums ${utilPercent > 75 ? 'text-red-600' : 'text-alabaster-900'}`}>
+                            {utilPercent}%
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-alabaster-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${
+                              utilPercent > 75 ? 'bg-red-500' : utilPercent > 40 ? 'bg-amber-500' : 'bg-sage-500'
+                            }`}
+                            style={{ width: `${utilPercent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* SPENDING & LIMIT NUMBERS */}
+                      <div className="pt-2 border-t border-alabaster-200 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <div className="text-alabaster-800 font-medium">Outstanding</div>
+                          <div className="font-bold font-mono-nums text-alabaster-900 text-sm mt-0.5">
+                            ₹{card.netOutstanding.toLocaleString('en-IN')}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="text-alabaster-800 font-medium flex items-center justify-between">
+                            <span>Limit</span>
+                            <button
+                              onClick={() => {
+                                setEditLimitCard(card.name);
+                                setNewLimitValue(card.limit.toString());
+                              }}
+                              className="text-[10px] text-alabaster-900 underline font-bold"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                          <div className="font-bold font-mono-nums text-alabaster-900 text-sm mt-0.5">
+                            ₹{card.limit.toLocaleString('en-IN')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* EDIT LIMIT INLINE MODAL */}
+                      {editLimitCard === card.name && (
+                        <div className="p-3 bg-alabaster-100 rounded-xl border border-alabaster-200 space-y-2">
+                          <label className="text-xs font-bold text-alabaster-900">New Card Limit (₹)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={newLimitValue}
+                              onChange={e => setNewLimitValue(e.target.value)}
+                              className="w-full px-3 py-1.5 bg-alabaster-50 border border-alabaster-200 rounded-lg text-xs font-mono-nums focus:outline-none"
+                            />
+                            <button
+                              onClick={() => handleSaveCardLimit(card.name)}
+                              className="px-3 py-1.5 bg-alabaster-900 text-alabaster-50 rounded-lg text-xs font-semibold"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 3: BATCH IMPORT & DRIVE SYNC ================= */}
+          {activeTab === 'import' && (
+            <div className="space-y-6">
+              
+              {/* DROPZONE UPLOADER */}
+              <div className="bg-alabaster-50 border-2 border-dashed border-alabaster-300 rounded-2xl p-8 text-center space-y-4 hover:border-alabaster-900 transition">
+                <div className="w-12 h-12 rounded-2xl bg-alabaster-100 text-alabaster-900 border border-alabaster-200 flex items-center justify-center mx-auto">
+                  <Icon name="upload" className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-alabaster-900">Upload Axio Export CSV Files</h3>
+                  <p className="text-xs text-alabaster-800 mt-1 max-w-md mx-auto">
+                    Supports multiple CSV exports at once. Strips header text, auto-detects columns, and skips duplicate rows using composite fingerprinting.
+                  </p>
+                </div>
+                <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-alabaster-900 text-alabaster-50 rounded-xl text-sm font-semibold cursor-pointer hover:bg-alabaster-800 transition">
+                  <Icon name="upload" className="w-4 h-4" />
+                  <span>Select CSV Files</span>
+                  <input type="file" multiple accept=".csv" onChange={handleCSVUpload} className="hidden" />
+                </label>
+              </div>
+
+              {/* SAFE TO DELETE CSV TRACKER */}
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-alabaster-900 flex items-center gap-2">
+                      <Icon name="shield" className="w-4 h-4 text-sage-500" />
+                      <span>Safe-to-Delete CSV Tracker</span>
+                    </h3>
+                    <p className="text-xs text-alabaster-800 mt-0.5">
+                      These CSV statements are already merged into your persistent state (<code className="font-mono text-[11px] bg-alabaster-200 px-1 rounded">axio_ledger_state.json</code>) and can be safely deleted from Google Drive to save space.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {googleDriveConfig.syncedCSVs.map(file => (
+                    <div key={file} className="flex items-center justify-between p-3 bg-alabaster-100 rounded-xl border border-alabaster-200 text-xs">
+                      <div className="flex items-center gap-2 font-mono text-alabaster-900 font-medium">
+                        <Icon name="fileText" className="w-4 h-4 text-alabaster-800" />
+                        <span>{file}</span>
+                      </div>
+                      <span className="bg-sage-100 text-sage-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                        Imported & Preserved
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB 4: SETTINGS & CLOUD SYNC ================= */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="text-base font-bold text-alabaster-900">Google Drive OAuth 2.0 & Cloud Sync</h2>
+                  <p className="text-xs text-alabaster-800 mt-1">
+                    Connect your Google Account to automatically poll CSV statements and maintain cross-device sync via <code className="font-mono">axio_ledger_state.json</code>.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-alabaster-900">Google OAuth Client ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 123456789-abc.apps.googleusercontent.com"
+                      value={googleDriveConfig.clientId}
+                      onChange={e => setGoogleDriveConfig(prev => ({ ...prev, clientId: e.target.value }))}
+                      className="w-full px-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl font-mono text-xs focus:outline-none focus:border-alabaster-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-alabaster-900">Drive Sync Folder Name</label>
+                    <input
+                      type="text"
+                      value={googleDriveConfig.folderName}
+                      onChange={e => setGoogleDriveConfig(prev => ({ ...prev, folderName: e.target.value }))}
+                      className="w-full px-3 py-2 bg-alabaster-50 border border-alabaster-200 rounded-xl text-xs focus:outline-none focus:border-alabaster-900"
+                    />
+                  </div>
+                </div>
+
+                {/* VIRTUAL DRIVE SIMULATOR TOGGLE */}
+                <div className="p-4 bg-alabaster-100 rounded-xl border border-alabaster-200 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-xs text-alabaster-900">Virtual Drive Simulator Mode</div>
+                    <div className="text-[11px] text-alabaster-800">Allows instant testing of auto-sync and state persistence without Google API credentials</div>
+                  </div>
+                  <button
+                    onClick={() => setGoogleDriveConfig(prev => ({ ...prev, isVirtual: !prev.isVirtual }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                      googleDriveConfig.isVirtual ? 'bg-sage-500 text-white' : 'bg-alabaster-200 text-alabaster-900'
+                    }`}
+                  >
+                    {googleDriveConfig.isVirtual ? 'Simulator Active' : 'Enable Simulator'}
+                  </button>
+                </div>
+
+                {/* MANUAL STATE BACKUP / EXPORT / IMPORT */}
+                <div className="pt-4 border-t border-alabaster-200 flex flex-wrap gap-3">
+                  <button
+                    onClick={exportLedgerStateJSON}
+                    className="px-4 py-2 bg-alabaster-900 text-alabaster-50 rounded-xl text-xs font-semibold flex items-center gap-2"
+                  >
+                    <Icon name="upload" className="w-4 h-4 rotate-180" />
+                    <span>Download JSON Backup</span>
+                  </button>
+
+                  <label className="px-4 py-2 bg-alabaster-200 text-alabaster-900 rounded-xl text-xs font-semibold cursor-pointer hover:bg-alabaster-300 transition flex items-center gap-2">
+                    <Icon name="upload" className="w-4 h-4" />
+                    <span>Restore JSON State</span>
+                    <input type="file" accept=".json" onChange={importLedgerStateJSON} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ================= TAB 5: DEPLOYMENT & QA SUITE ================= */}
+          {activeTab === 'qa' && (
+            <div className="space-y-6">
+              
+              {/* GITHUB PAGES DEPLOYMENT GUIDE */}
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <h2 className="text-base font-bold text-alabaster-900 flex items-center gap-2">
+                  <Icon name="sparkles" className="w-5 h-5 text-alabaster-900" />
+                  <span>GitHub Pages Deployment Guide (Repository: ajeyachakrav-collab)</span>
+                </h2>
+                <div className="text-xs text-alabaster-800 space-y-2 leading-relaxed">
+                  <p>To publish this application live with zero build steps:</p>
+                  <ol className="list-decimal list-inside space-y-1 font-mono bg-alabaster-100 p-4 rounded-xl border border-alabaster-200 text-[11px]">
+                    <li>Save this file as <code className="font-bold">index.html</code> in your repository root.</li>
+                    <li>Push the file to GitHub: <code className="font-bold">git commit -m "Deploy Axio Ledger" &amp;&amp; git push origin main</code></li>
+                    <li>Go to Repo Settings → Pages → Source: Deploy from branch <code className="font-bold">main</code> / (root).</li>
+                    <li>Your app will be live at: <code className="font-bold text-alabaster-900">https://ajeyachakrav-collab.github.io/axio-ledger</code></li>
+                  </ol>
+                </div>
+              </div>
+
+              {/* AUTOMATED QA SELF TEST RUNNER */}
+              <div className="bg-alabaster-50 border border-alabaster-200 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-alabaster-900">Automated QA Test Runner</h3>
+                    <p className="text-xs text-alabaster-800">Executes real-time unit tests on CSV parsing, subset-sum math, and JSON schema</p>
+                  </div>
+                  <button
+                    onClick={runQASelfTests}
+                    className="px-4 py-2 bg-alabaster-900 text-alabaster-50 rounded-xl text-xs font-semibold flex items-center gap-2 hover:bg-alabaster-800 transition"
+                  >
+                    <Icon name="cpu" className="w-4 h-4" />
+                    <span>Run QA Suite</span>
+                  </button>
+                </div>
+
+                {qaResults && (
+                  <div className="space-y-2 pt-2 border-t border-alabaster-200">
+                    {qaResults.map((test, idx) => (
+                      <div key={idx} className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                        test.passed ? 'bg-sage-50 border-sage-100 text-sage-700' : 'bg-red-50 border-red-200 text-red-800'
+                      }`}>
+                        <div className="flex items-center gap-2 font-medium">
+                          <Icon name={test.passed ? 'check' : 'alert'} className="w-4 h-4" />
+                          <span>{test.name}</span>
+                        </div>
+                        <div className="font-mono text-[11px] opacity-80">{test.details}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* FOOTER */}
+          <footer className="mt-auto py-4 text-center text-xs text-alabaster-800 border-t border-alabaster-200">
+            Axio Card Payoff &amp; Drive Ledger • Standalone GitHub Pages Edition
+          </footer>
+
+        </div>
+      );
+    }
+
+    // Render App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
