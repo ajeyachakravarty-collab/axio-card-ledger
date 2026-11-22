@@ -1,1670 +1,253 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#FAF9F6] text-[#141413]">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Axio Card Ledger</title>
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            alabaster: '#FAF9F6',
-            charcoal: '#141413',
-            cardBg: '#FFFFFF',
-            borderSubtle: '#E6E4DD',
-            accentMuted: '#6E6D6A',
-            softGreen: '#2D6A4F',
-            softGreenBg: '#E8F5E9',
-            softRed: '#900C3F',
-            softRedBg: '#FFEBEE',
-            amberAlert: '#D97706',
-            amberBg: '#FEF3C7',
-          },
-          fontFamily: {
-            serif: ['Georgia', 'Cambria', 'serif'],
-            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
-          }
-        }
-      }
-    }
-  </script>
-
-  <style>
-    /* Tabular Nums for perfect financial alignment */
-    .tabular-nums {
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Custom scrollbar styling for editorial feel */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #FAF9F6;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #D8D6CE;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #B8B6AE;
-    }
-
-    /* Modal Backdrop animation */
-    .backdrop-fade {
-      background-color: rgba(20, 20, 19, 0.4);
-      backdrop-filter: blur(3px);
-    }
-  </style>
-
-  <!-- Google GIS Client API -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
-<body class="h-full font-sans antialiased bg-[#FAF9F6] text-[#141413] flex flex-col min-h-screen selection:bg-[#E6E4DD]">
-
-  <!-- TOP APP HEADER -->
-  <header class="border-b border-[#E6E4DD] bg-[#FFFFFF] sticky top-0 z-30 shadow-sm">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      
-      <!-- Logo & Title -->
-      <div class="flex items-center space-x-3">
-        <div class="w-9 h-9 rounded-lg bg-[#141413] text-[#FAF9F6] flex items-center justify-center font-serif font-bold text-lg tracking-wider shadow-sm">
-          A
-        </div>
-        <div>
-          <h1 class="font-serif font-bold text-lg leading-tight tracking-tight text-[#141413]">Axio Card Ledger</h1>
-          <p class="text-xs text-[#6E6D6A] font-medium hidden sm:block">Precision Financial Ledger & Smart Reconciliation</p>
-        </div>
-      </div>
-
-      <!-- Action & Status Controls -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
-        
-        <!-- Virtual Mode Indicator Toggle Badge -->
-        <button id="virtualModeBadge" onclick="toggleVirtualDriveMode()" class="px-2.5 py-1 text-xs font-medium rounded-md border border-[#E6E4DD] bg-[#FAF9F6] hover:bg-[#E6E4DD] transition flex items-center space-x-1.5" title="Toggle Virtual Drive Simulation Mode">
-          <span id="virtualDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-          <span id="virtualText" class="text-[#141413]">Drive: Virtual</span>
-        </button>
-
-        <!-- QA Test Suite Modal Trigger -->
-        <button onclick="openQAModal()" class="px-3 py-1.5 text-xs font-semibold rounded-md border border-[#141413] text-[#141413] hover:bg-[#141413] hover:text-[#FAF9F6] transition flex items-center space-x-1 shadow-sm">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-          <span>QA Suite</span>
-        </button>
-
-        <!-- Drive Settings Button -->
-        <button onclick="openDriveModal()" class="p-2 rounded-md text-[#141413] hover:bg-[#FAF9F6] border border-[#E6E4DD] transition" title="Google Drive OAuth Settings">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-        </button>
-
-        <!-- Import CSV Manual Button -->
-        <label class="cursor-pointer bg-[#141413] text-[#FAF9F6] hover:bg-black px-3.5 py-1.5 rounded-md text-xs font-medium shadow-sm transition flex items-center space-x-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-          <span>Import CSV</span>
-          <input type="file" id="manualCsvInput" accept=".csv" class="hidden" onchange="handleManualCsvUpload(event)" />
-        </label>
-
-      </div>
-    </div>
-  </header>
-
-  <!-- MAIN CONTAINER -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6 w-full">
-
-    <!-- OVERVIEW METRICS DASHBOARD -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      
-      <!-- Card 1: Total Net Due -->
-      <div class="bg-[#FFFFFF] p-4 rounded-xl border border-[#E6E4DD] shadow-sm flex flex-col justify-between">
-        <div class="flex justify-between items-center text-xs font-semibold text-[#6E6D6A] uppercase tracking-wider">
-          <span>Total Net Due</span>
-          <svg class="w-4 h-4 text-[#900C3F]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        </div>
-        <div class="mt-3">
-          <div id="metricNetDue" class="text-2xl font-serif font-bold text-[#141413] tabular-nums">₹0.00</div>
-          <p class="text-[11px] text-[#6E6D6A] mt-0.5">Across all active credit cards</p>
-        </div>
-      </div>
-
-      <!-- Card 2: Total Available Credit -->
-      <div class="bg-[#FFFFFF] p-4 rounded-xl border border-[#E6E4DD] shadow-sm flex flex-col justify-between">
-        <div class="flex justify-between items-center text-xs font-semibold text-[#6E6D6A] uppercase tracking-wider">
-          <span>Credit Available</span>
-          <svg class="w-4 h-4 text-[#2D6A4F]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-        </div>
-        <div class="mt-3">
-          <div id="metricCreditAvailable" class="text-2xl font-serif font-bold text-[#141413] tabular-nums">₹0.00</div>
-          <p id="metricTotalLimitSub" class="text-[11px] text-[#6E6D6A] mt-0.5">Out of ₹0.00 total limit</p>
-        </div>
-      </div>
-
-      <!-- Card 3: Unlinked Refunds / Credits -->
-      <div class="bg-[#FFFFFF] p-4 rounded-xl border border-[#E6E4DD] shadow-sm flex flex-col justify-between">
-        <div class="flex justify-between items-center text-xs font-semibold text-[#6E6D6A] uppercase tracking-wider">
-          <span>Unlinked Credits</span>
-          <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-6z"></path></svg>
-        </div>
-        <div class="mt-3">
-          <div id="metricUnlinkedCredits" class="text-2xl font-serif font-bold text-[#141413] tabular-nums">₹0.00</div>
-          <p id="metricUnlinkedCount" class="text-[11px] text-[#6E6D6A] mt-0.5">0 unassigned payoff/refund entries</p>
-        </div>
-      </div>
-
-      <!-- Card 4: Shortfall Waivers / Adjustments -->
-      <div class="bg-[#FFFFFF] p-4 rounded-xl border border-[#E6E4DD] shadow-sm flex flex-col justify-between">
-        <div class="flex justify-between items-center text-xs font-semibold text-[#6E6D6A] uppercase tracking-wider">
-          <span>Shortfall Waivers</span>
-          <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-        </div>
-        <div class="mt-3">
-          <div id="metricShortfallWaivers" class="text-2xl font-serif font-bold text-[#141413] tabular-nums">₹0.00</div>
-          <p class="text-[11px] text-[#6E6D6A] mt-0.5">Total minor variances reconciled</p>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- CREDIT CARD MANAGER SECTION -->
-    <section class="bg-[#FFFFFF] rounded-xl border border-[#E6E4DD] p-5 shadow-sm space-y-4">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 class="font-serif font-bold text-lg text-[#141413]">Credit Card Portfolio</h2>
-          <p class="text-xs text-[#6E6D6A]">Manage card limits, statement cycles, aliases, and lifecycle status</p>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button onclick="openCardModal()" class="px-3 py-1.5 text-xs font-medium rounded-md bg-[#FAF9F6] hover:bg-[#E6E4DD] border border-[#E6E4DD] text-[#141413] transition flex items-center space-x-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            <span>Add New Card</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Cards Grid -->
-      <div id="cardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Rendered dynamically -->
-      </div>
-    </section>
-
-    <!-- TRANSACTIONS & RECONCILIATION SECTION -->
-    <section class="bg-[#FFFFFF] rounded-xl border border-[#E6E4DD] p-5 shadow-sm space-y-4">
-      
-      <!-- Toolbar & Filters -->
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-[#E6E4DD]">
-        <div class="flex flex-wrap items-center gap-2">
-          <h2 class="font-serif font-bold text-lg text-[#141413] mr-2">Ledger Entries</h2>
-          
-          <!-- Card Filter Dropdown -->
-          <select id="filterCardSelect" onchange="renderApp()" class="text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] px-3 py-1.5 font-medium text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]">
-            <option value="ALL">All Credit Cards</option>
-          </select>
-
-          <!-- Type Filter -->
-          <select id="filterTypeSelect" onchange="renderApp()" class="text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] px-3 py-1.5 font-medium text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]">
-            <option value="ALL">All Entry Types</option>
-            <option value="SPEND">Spends (Debit)</option>
-            <option value="CREDIT">Payoffs / Refunds (Credit)</option>
-            <option value="UNLINKED">Unlinked Credits Only</option>
-          </select>
-        </div>
-
-        <div class="flex items-center space-x-2">
-          <!-- Search Input -->
-          <div class="relative flex-1 sm:w-64">
-            <input type="text" id="searchInput" oninput="renderApp()" placeholder="Search place, category, notes..." class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] pl-8 pr-3 py-1.5 text-[#141413] placeholder-[#6E6D6A] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-            <svg class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#6E6D6A]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-          </div>
-
-          <!-- Smart Subset-Sum Bundle Matcher Trigger -->
-          <button onclick="openSubsetSumModal()" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-[#141413] text-[#FAF9F6] hover:bg-black transition flex items-center space-x-1 whitespace-nowrap shadow-sm">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-6z"></path></svg>
-            <span>Smart Bundle Matcher</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Transactions Table -->
-      <div class="overflow-x-auto rounded-lg border border-[#E6E4DD]">
-        <table class="w-full text-left text-xs">
-          <thead class="bg-[#FAF9F6] border-b border-[#E6E4DD] text-[#6E6D6A] font-semibold uppercase tracking-wider">
-            <tr>
-              <th class="py-3 px-4">Date & Time</th>
-              <th class="py-3 px-4">Card / Account</th>
-              <th class="py-3 px-4">Description / Merchant</th>
-              <th class="py-3 px-4">Category</th>
-              <th class="py-3 px-4 text-right">Amount (₹)</th>
-              <th class="py-3 px-4 text-right">Linked Payoff</th>
-              <th class="py-3 px-4 text-right">Remaining Due</th>
-              <th class="py-3 px-4 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="ledgerTableBody" class="divide-y divide-[#E6E4DD] bg-[#FFFFFF] tabular-nums">
-            <!-- Rendered dynamically -->
-          </tbody>
-        </table>
-      </div>
-
-    </section>
-
-  </main>
-
-  <!-- MODAL 1: GOOGLE DRIVE & VIRTUAL SIMULATOR SETTINGS MODAL -->
-  <div id="driveModal" class="fixed inset-0 z-50 hidden backdrop-fade flex items-center justify-center p-4">
-    <div class="bg-[#FFFFFF] border border-[#E6E4DD] rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5 relative">
-      
-      <div class="flex justify-between items-center border-b border-[#E6E4DD] pb-3">
-        <h3 class="font-serif font-bold text-lg text-[#141413]">Google Drive Live Sync & Simulator</h3>
-        <button onclick="closeDriveModal()" class="text-[#6E6D6A] hover:text-[#141413] text-xl font-bold">&times;</button>
-      </div>
-
-      <div class="space-y-4 text-xs">
-        
-        <!-- Persistent OAuth Client ID -->
-        <div>
-          <label class="block font-semibold text-[#141413] mb-1">Google OAuth Client ID</label>
-          <input type="text" id="driveClientIdInput" onchange="saveDriveSettingsFromUI()" placeholder="1234567890-xxx.apps.googleusercontent.com" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2.5 font-mono text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          <p class="text-[11px] text-[#6E6D6A] mt-1">Saved persistently in browser local storage key <code class="bg-[#FAF9F6] px-1 rounded text-[#141413]">axio_oauth_client_id</code>.</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Drive App Folder</label>
-            <input type="text" id="driveFolderInput" onchange="saveDriveSettingsFromUI()" value="Axio Card Exports" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2.5 font-mono text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          </div>
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Poll Interval (seconds)</label>
-            <input type="number" id="drivePollInput" onchange="saveDriveSettingsFromUI()" value="60" min="10" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2.5 text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          </div>
-        </div>
-
-        <!-- Drive Connect Controls -->
-        <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#E6E4DD]">
-          <button id="connectDriveBtn" onclick="initiateDriveAuth()" class="w-full sm:w-auto px-4 py-2 bg-[#141413] text-[#FAF9F6] hover:bg-black rounded-md font-semibold transition flex items-center justify-center space-x-2">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
-            <span>Connect Google Drive</span>
-          </button>
-          
-          <button onclick="toggleVirtualDriveMode()" class="w-full sm:w-auto px-3 py-2 bg-[#FAF9F6] border border-[#E6E4DD] text-[#141413] rounded-md font-medium hover:bg-[#E6E4DD] transition">
-            Toggle Virtual Simulator Mode
-          </button>
-        </div>
-
-        <!-- Virtual Simulator Actions -->
-        <div class="bg-[#FAF9F6] p-3 rounded-lg border border-[#E6E4DD] space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="font-semibold text-[#141413]">Virtual Drive Simulator</span>
-            <span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold uppercase">No OAuth Needed</span>
-          </div>
-          <p class="text-[11px] text-[#6E6D6A]">Test multi-CSV ingestion and non-conflicting cross-device state hydration without real Google Cloud setup.</p>
-          <button onclick="simulateDropSampleCsv()" class="w-full py-2 bg-[#2D6A4F] text-white hover:bg-[#1E4835] rounded-md font-semibold transition flex items-center justify-center space-x-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            <span>+ Drop Sample Axio CSV into Virtual Drive</span>
-          </button>
-        </div>
-
-        <!-- Safe Two-Step Reset Entries Section -->
-        <div class="pt-4 border-t border-[#E6E4DD] space-y-2">
-          <div class="flex justify-between items-center">
-            <div>
-              <span class="font-bold text-red-700">Clear Ledger Entries</span>
-              <p class="text-[11px] text-[#6E6D6A]">Wipes transactions/links while strictly preserving OAuth Client ID, cards, and limits.</p>
-            </div>
-            
-            <div id="resetBtnContainer">
-              <button onclick="promptResetEntries()" class="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 rounded-md font-semibold transition">
-                Reset All Entries
-              </button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </div>
-  </div>
-
-  <!-- MODAL 2: QA AUTOMATED TEST SUITE RUNNER MODAL -->
-  <div id="qaModal" class="fixed inset-0 z-50 hidden backdrop-fade flex items-center justify-center p-4">
-    <div class="bg-[#FFFFFF] border border-[#E6E4DD] rounded-2xl max-w-2xl w-full p-6 shadow-xl space-y-5 relative max-h-[90vh] flex flex-col">
-      
-      <div class="flex justify-between items-center border-b border-[#E6E4DD] pb-3">
-        <div>
-          <h3 class="font-serif font-bold text-lg text-[#141413]">Automated QA Diagnostic Suite</h3>
-          <p class="text-xs text-[#6E6D6A]">Comprehensive verification of RFC 4180 parsing, integer-paise net math, persistent Client ID, and PWA manifest</p>
-        </div>
-        <button onclick="closeQAModal()" class="text-[#6E6D6A] hover:text-[#141413] text-xl font-bold">&times;</button>
-      </div>
-
-      <!-- Test Progress Header -->
-      <div class="flex items-center justify-between bg-[#FAF9F6] p-3.5 rounded-xl border border-[#E6E4DD]">
-        <div class="flex items-center space-x-3">
-          <div id="qaScoreBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-300">
-            Pass Rate: --
-          </div>
-          <span id="qaSummaryText" class="text-xs font-semibold text-[#141413]">Ready to execute test suite...</span>
-        </div>
-        <button onclick="runAllQATests()" class="px-4 py-1.5 text-xs font-bold bg-[#141413] text-[#FAF9F6] hover:bg-black rounded-md shadow transition">
-          Run All 8 Tests
-        </button>
-      </div>
-
-      <!-- Test Results List Container -->
-      <div id="qaResultsList" class="overflow-y-auto space-y-2.5 flex-1 pr-1 text-xs">
-        <!-- Rendered dynamically -->
-      </div>
-
-      <div class="pt-3 border-t border-[#E6E4DD] flex justify-end">
-        <button onclick="closeQAModal()" class="px-4 py-1.5 text-xs font-semibold rounded-md bg-[#FAF9F6] border border-[#E6E4DD] hover:bg-[#E6E4DD]">Close</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- MODAL 3: CARD MANAGEMENT MODAL (ADD / EDIT) -->
-  <div id="cardModal" class="fixed inset-0 z-50 hidden backdrop-fade flex items-center justify-center p-4">
-    <div class="bg-[#FFFFFF] border border-[#E6E4DD] rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-      <div class="flex justify-between items-center border-b border-[#E6E4DD] pb-3">
-        <h3 id="cardModalTitle" class="font-serif font-bold text-lg text-[#141413]">Add Credit Card</h3>
-        <button onclick="closeCardModal()" class="text-[#6E6D6A] hover:text-[#141413] text-xl font-bold">&times;</button>
-      </div>
-
-      <form id="cardForm" onsubmit="handleCardFormSubmit(event)" class="space-y-3 text-xs">
-        <input type="hidden" id="cardFormId" />
-
-        <div>
-          <label class="block font-semibold text-[#141413] mb-1">Card Name / Title</label>
-          <input type="text" id="cardFormName" required placeholder="e.g. SBI Titan RuPay" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Credit Limit (₹)</label>
-            <input type="number" id="cardFormLimit" step="1000" min="0" required placeholder="100000" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          </div>
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Card Color Theme</label>
-            <input type="color" id="cardFormColor" value="#141413" class="w-full h-9 rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-1 cursor-pointer" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Statement Day of Month</label>
-            <input type="number" id="cardFormStmtDay" min="1" max="31" required placeholder="15" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          </div>
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Due Day of Month</label>
-            <input type="number" id="cardFormDueDay" min="1" max="31" required placeholder="5" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-[#141413] mb-1">CSV Account Aliases (comma-separated)</label>
-          <input type="text" id="cardFormAliases" placeholder="e.g. SBI-TITAN, SBI 4321, Titan RuPay" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 font-mono text-[#141413] focus:outline-none focus:ring-1 focus:ring-[#141413]" />
-          <p class="text-[11px] text-[#6E6D6A] mt-1">Used by CSV Importer to automatically map entries to this card.</p>
-        </div>
-
-        <div class="pt-3 border-t border-[#E6E4DD] flex justify-end space-x-2">
-          <button type="button" onclick="closeCardModal()" class="px-3 py-1.5 rounded-md border border-[#E6E4DD] bg-[#FAF9F6] hover:bg-[#E6E4DD] font-medium">Cancel</button>
-          <button type="submit" class="px-4 py-1.5 rounded-md bg-[#141413] text-[#FAF9F6] hover:bg-black font-semibold">Save Card</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL 4: SUBSET-SUM SMART BUNDLE MATCHER MODAL -->
-  <div id="subsetSumModal" class="fixed inset-0 z-50 hidden backdrop-fade flex items-center justify-center p-4">
-    <div class="bg-[#FFFFFF] border border-[#E6E4DD] rounded-2xl max-w-xl w-full p-6 shadow-xl space-y-4">
-      <div class="flex justify-between items-center border-b border-[#E6E4DD] pb-3">
-        <div>
-          <h3 class="font-serif font-bold text-lg text-[#141413]">Subset-Sum Smart Bundle Finder</h3>
-          <p class="text-xs text-[#6E6D6A]">Find exact combinations of unlinked spends or refunds matching a payment amount</p>
-        </div>
-        <button onclick="closeSubsetSumModal()" class="text-[#6E6D6A] hover:text-[#141413] text-xl font-bold">&times;</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Select Credit Card</label>
-            <select id="bundleCardSelect" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 font-medium text-[#141413]">
-              <!-- Options populated dynamically -->
-            </select>
-          </div>
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Target Payment Amount (₹)</label>
-            <input type="number" id="bundleTargetAmount" step="0.01" placeholder="e.g. 5499.00" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 text-[#141413]" />
-          </div>
-        </div>
-
-        <button onclick="executeSubsetSumSolverUI()" class="w-full py-2 bg-[#141413] text-[#FAF9F6] font-bold rounded-md hover:bg-black transition">
-          Find Exact Matching Bundle
-        </button>
-
-        <div id="bundleResultsContainer" class="mt-3 p-3 bg-[#FAF9F6] border border-[#E6E4DD] rounded-xl space-y-2 hidden">
-          <!-- Dynamically populated with combinations -->
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 5: LINK / SHORTFALL WAIVER DIALOG -->
-  <div id="linkModal" class="fixed inset-0 z-50 hidden backdrop-fade flex items-center justify-center p-4">
-    <div class="bg-[#FFFFFF] border border-[#E6E4DD] rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-      <div class="flex justify-between items-center border-b border-[#E6E4DD] pb-3">
-        <h3 class="font-serif font-bold text-lg text-[#141413]">Link Credit / Waive Variance</h3>
-        <button onclick="closeLinkModal()" class="text-[#6E6D6A] hover:text-[#141413] text-xl font-bold">&times;</button>
-      </div>
-
-      <div id="linkModalContent" class="space-y-3 text-xs">
-        <!-- Dynamically injected -->
-      </div>
-    </div>
-  </div>
-
-  <!-- GLOBAL NOTIFICATION TOAST CONTAINER -->
-  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
-
-  <!-- JAVASCRIPT APPLICATION CORE -->
-  <script>
-    /**
-     * AXIO CARD LEDGER - PWA ENGINE & STATE MANAGEMENT
-     */
-
-    // --- LOCAL STORAGE KEYS ---
-    const STORAGE_KEY_CLIENT_ID = 'axio_oauth_client_id';
-    const STORAGE_KEY_DRIVE_FOLDER = 'axio_drive_folder';
-    const STORAGE_KEY_POLL_INTERVAL = 'axio_poll_interval';
-    const STORAGE_KEY_LEDGER_STATE = 'axio_ledger_state_v2';
-    const STORAGE_KEY_VIRTUAL_MODE = 'axio_virtual_drive_mode';
-
-    // --- DEFAULT PRE-LOADED CREDIT CARDS ---
-    const DEFAULT_CARDS = [
-      { id: 'card_sbi_titan', name: 'SBI Titan RuPay', limitPaise: 15000000, stmtDay: 15, dueDay: 5, aliases: ['SBI-TITAN', 'TITAN RUPAY', 'SBI 4321'], color: '#1E3A8A', isArchived: false },
-      { id: 'card_onecard', name: 'OneCard Metal', limitPaise: 20000000, stmtDay: 20, dueDay: 8, aliases: ['ONECARD', 'BOB ONECARD', 'METAL'], color: '#141413', isArchived: false },
-      { id: 'card_icici_amazon', name: 'ICICI Amazon Pay', limitPaise: 30000000, stmtDay: 12, dueDay: 2, aliases: ['ICICI-APAY', 'AMAZON PAY', 'ICICI 8812'], color: '#D97706', isArchived: false },
-      { id: 'card_cred_flash', name: 'CRED Flash', limitPaise: 5000000, stmtDay: 1, dueDay: 20, aliases: ['CRED FLASH', 'CRED', 'FLASH PAY'], color: '#900C3F', isArchived: false },
-      { id: 'card_hdfc_millennia', name: 'HDFC Millennia', limitPaise: 25000000, stmtDay: 25, dueDay: 15, aliases: ['HDFC-MILLENNIA', 'HDFC 9901', 'MILLENNIA'], color: '#2D6A4F', isArchived: false }
-    ];
-
-    // --- APPLICATION GLOBAL STATE ---
-    let appState = {
-      cards: [],
-      spends: [],
-      credits: [],
-      links: [], // { id, spendId, creditId, amountPaise, isShortfallWaiver: bool }
-      processedFiles: [], // array of processed file hashes/names
-      updatedAt: Date.now()
-    };
-
-    let driveConfig = {
-      clientId: '',
-      folderName: 'Axio Card Exports',
-      pollInterval: 60,
-      isVirtualMode: true,
-      accessToken: null
-    };
-
-    let isRemoteHydratingRef = false;
-
-    // --- INITIALIZATION ON WINDOW LOAD ---
-    window.onload = function() {
-      console.log("Initializing Axio Card Ledger PWA...");
-      loadDriveConfigFromStorage();
-      loadLedgerStateFromStorage();
-      registerPWADataManifestAndWorker();
-      renderApp();
-      runAllQATests(); // Run QA diagnostic suite on initial boot
-    };
-
-    // --- PWA MANIFEST & SERVICE WORKER INJECTION ---
-    function registerPWADataManifestAndWorker() {
-      try {
-        // 1. Dynamic Web App Manifest Data URI
-        const manifest = {
-          name: "Axio Card Ledger",
-          short_name: "Axio Ledger",
-          start_url: "./",
-          display: "standalone",
-          background_color: "#FAF9F6",
-          theme_color: "#141413",
-          icons: [
-            {
-              src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 24 24" fill="%23141413"><rect width="24" height="24" rx="4" fill="%23141413"/><text x="12" y="16" font-family="Georgia" font-size="14" fill="%23FAF9F6" text-anchor="middle" font-weight="bold">A</text></svg>`,
-              sizes: "192x192",
-              type: "image/svg+xml"
-            }
-          ]
-        };
-        const manifestStr = JSON.stringify(manifest);
-        const manifestUrl = 'data:application/manifest+json;base64,' + btoa(manifestStr);
-        let linkTag = document.querySelector('link[rel="manifest"]');
-        if (!linkTag) {
-          linkTag = document.createElement('link');
-          linkTag.rel = 'manifest';
-          document.head.appendChild(linkTag);
-        }
-        linkTag.href = manifestUrl;
-
-        // 2. Inline Service Worker Blob
-        if ('serviceWorker' in navigator) {
-          const swCode = `
-            const CACHE_NAME = 'axio-ledger-v1';
-            self.addEventListener('install', (e) => self.skipWaiting());
-            self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-            self.addEventListener('fetch', (e) => {
-              e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-            });
-          `;
-          const blob = new Blob([swCode], { type: 'application/javascript' });
-          const workerUrl = URL.createObjectURL(blob);
-          navigator.serviceWorker.register(workerUrl).catch(err => console.warn("SW register ignored:", err));
-        }
-      } catch (e) {
-        console.warn("PWA Manifest Injection Error:", e);
-      }
-    }
-
-    // --- LOCAL STORAGE PERSISTENCE HELPERS ---
-    function loadDriveConfigFromStorage() {
-      driveConfig.clientId = localStorage.getItem(STORAGE_KEY_CLIENT_ID) || '';
-      driveConfig.folderName = localStorage.getItem(STORAGE_KEY_DRIVE_FOLDER) || 'Axio Card Exports';
-      driveConfig.pollInterval = parseInt(localStorage.getItem(STORAGE_KEY_POLL_INTERVAL) || '60', 10);
-      driveConfig.isVirtualMode = localStorage.getItem(STORAGE_KEY_VIRTUAL_MODE) !== 'false';
-
-      // Sync to Modal UI Inputs
-      document.getElementById('driveClientIdInput').value = driveConfig.clientId;
-      document.getElementById('driveFolderInput').value = driveConfig.folderName;
-      document.getElementById('drivePollInput').value = driveConfig.pollInterval;
-      updateVirtualModeUI();
-    }
-
-    function saveDriveSettingsFromUI() {
-      const clientId = document.getElementById('driveClientIdInput').value.trim();
-      const folderName = document.getElementById('driveFolderInput').value.trim() || 'Axio Card Exports';
-      const pollInterval = parseInt(document.getElementById('drivePollInput').value, 10) || 60;
-
-      driveConfig.clientId = clientId;
-      driveConfig.folderName = folderName;
-      driveConfig.pollInterval = pollInterval;
-
-      // STRICT MANDATE: Write to persistent dedicated localStorage keys
-      localStorage.setItem(STORAGE_KEY_CLIENT_ID, clientId);
-      localStorage.setItem(STORAGE_KEY_DRIVE_FOLDER, folderName);
-      localStorage.setItem(STORAGE_KEY_POLL_INTERVAL, pollInterval.toString());
-
-      showToast('Drive OAuth Settings saved!', 'success');
-    }
-
-    function loadLedgerStateFromStorage() {
-      const raw = localStorage.getItem(STORAGE_KEY_LEDGER_STATE);
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          appState = {
-            cards: parsed.cards || DEFAULT_CARDS,
-            spends: parsed.spends || [],
-            credits: parsed.credits || [],
-            links: parsed.links || [],
-            processedFiles: parsed.processedFiles || [],
-            updatedAt: parsed.updatedAt || Date.now()
-          };
-          return;
-        } catch (e) {
-          console.error("Failed to parse local state JSON", e);
-        }
-      }
-      // Fallback initial state
-      appState = {
-        cards: DEFAULT_CARDS,
-        spends: [],
-        credits: [],
-        links: [],
-        processedFiles: [],
-        updatedAt: Date.now()
-      };
-      saveLedgerStateToStorage();
-    }
-
-    function saveLedgerStateToStorage() {
-      if (isRemoteHydratingRef) return; // Prevent loop during hydration
-      appState.updatedAt = Date.now();
-      localStorage.setItem(STORAGE_KEY_LEDGER_STATE, JSON.stringify(appState));
-    }
-
-    // --- INTEGER PAISE MATHEMATICAL ENGINE ---
-    function parseToPaise(amount) {
-      if (typeof amount === 'number') return Math.round(amount * 100);
-      const cleaned = (amount || '').toString().replace(/[^0-9.-]/g, '');
-      const parsed = parseFloat(cleaned);
-      return isNaN(parsed) ? 0 : Math.round(parsed * 100);
-    }
-
-    function formatPaise(paise) {
-      const val = (paise || 0) / 100;
-      return '₹' + val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    // Calculate Net Due for a card or overall ledger
-    function calculateCardMetrics(cardId) {
-      const cardSpends = appState.spends.filter(s => s.cardId === cardId);
-      const cardCredits = appState.credits.filter(c => c.cardId === cardId);
-
-      // Sum spends
-      let totalSpendPaise = cardSpends.reduce((acc, s) => acc + s.amountPaise, 0);
-
-      // Sum links (payoffs applied to spends)
-      let totalLinkedPaise = 0;
-      let totalShortfallWaiverPaise = 0;
-
-      appState.links.forEach(link => {
-        const spend = cardSpends.find(s => s.id === link.spendId);
-        if (spend) {
-          if (link.isShortfallWaiver) {
-            totalShortfallWaiverPaise += link.amountPaise;
-          } else {
-            totalLinkedPaise += link.amountPaise;
-          }
-        }
-      });
-
-      // Sum unlinked credits (payments/refunds not yet assigned to specific spends)
-      let totalCreditsPaise = cardCredits.reduce((acc, c) => acc + c.amountPaise, 0);
-      let totalCreditLinkedPaise = appState.links.filter(l => !l.isShortfallWaiver && cardCredits.some(c => c.id === l.creditId))
-                                                 .reduce((acc, l) => acc + l.amountPaise, 0);
-      let unlinkedCreditsPaise = totalCreditsPaise - totalCreditLinkedPaise;
-
-      // Net Due = Total Spends - Total Linked Payoffs - Shortfall Waivers - Unlinked Credits
-      let netDuePaise = totalSpendPaise - totalLinkedPaise - totalShortfallWaiverPaise - unlinkedCreditsPaise;
-
-      return {
-        totalSpendPaise,
-        totalLinkedPaise,
-        totalShortfallWaiverPaise,
-        totalCreditsPaise,
-        unlinkedCreditsPaise,
-        netDuePaise
-      };
-    }
-
-    // --- RFC 4180 MULTI-CSV AXIO IMPORTER ---
-    function parseAxioCsvText(csvText) {
-      const lines = [];
-      let curLine = '';
-      let insideQuotes = false;
-
-      // Normalize line breaks & handle quotes RFC 4180
-      for (let i = 0; i < csvText.length; i++) {
-        const char = csvText[i];
-        if (char === '"') {
-          insideQuotes = !insideQuotes;
-          curLine += char;
-        } else if ((char === '\n' || char === '\r') && !insideQuotes) {
-          if (char === '\r' && csvText[i+1] === '\n') i++;
-          if (curLine.trim()) lines.push(curLine);
-          curLine = '';
-        } else {
-          curLine += char;
-        }
-      }
-      if (curLine.trim()) lines.push(curLine);
-
-      // Find Header Index (DATE, AMOUNT, ACCOUNT, etc.)
-      let headerIdx = -1;
-      for (let i = 0; i < lines.length; i++) {
-        const l = lines[i].toUpperCase();
-        if (l.includes('DATE') && (l.includes('AMOUNT') || l.includes('ACCOUNT') || l.includes('PLACE'))) {
-          headerIdx = i;
-          break;
-        }
-      }
-      if (headerIdx === -1) throw new Error("Invalid Axio CSV: Missing standard transaction header row.");
-
-      const headers = splitCsvRow(lines[headerIdx]).map(h => h.trim().toUpperCase());
-      const entries = [];
-
-      for (let i = headerIdx + 1; i < lines.length; i++) {
-        const rawLine = lines[i].trim();
-        if (!rawLine || rawLine.toUpperCase().includes('POWERED BY AXIO')) continue; // Skip footers
-
-        const cols = splitCsvRow(rawLine);
-        if (cols.length < 3) continue;
-
-        const rowObj = {};
-        headers.forEach((h, idx) => {
-          rowObj[h] = cols[idx] ? cols[idx].trim() : '';
-        });
-
-        // Determine fields
-        const dateStr = rowObj['DATE'] || rowObj['TRANSACTION DATE'] || new Date().toISOString().split('T')[0];
-        const timeStr = rowObj['TIME'] || '00:00';
-        const place = rowObj['PLACE'] || rowObj['MERCHANT'] || rowObj['DESCRIPTION'] || 'Axio Transaction';
-        const rawAmt = rowObj['AMOUNT'] || rowObj['TRANSACTION AMOUNT'] || '0';
-        const drcr = (rowObj['DR/CR'] || rowObj['TYPE'] || rowObj['DR_CR'] || '').toUpperCase();
-        const accountStr = rowObj['ACCOUNT'] || rowObj['CARD'] || rowObj['BANK'] || 'Default';
-        const category = rowObj['CATEGORY'] || rowObj['EXPENSE'] || 'General';
-        const notes = rowObj['NOTE'] || rowObj['TAGS'] || '';
-
-        const amountPaise = parseToPaise(rawAmt);
-        if (amountPaise <= 0) continue;
-
-        const isCredit = drcr.includes('CR') || drcr.includes('CREDIT') || place.toUpperCase().includes('REFUND') || place.toUpperCase().includes('PAYMENT RECEIVED');
-
-        // Create composite row fingerprint for deduplication
-        const fingerprint = `fp_${dateStr}_${timeStr}_${accountStr}_${amountPaise}_${isCredit ? 'CR' : 'DR'}`;
-
-        entries.push({
-          fingerprint,
-          dateStr,
-          timeStr,
-          place,
-          amountPaise,
-          isCredit,
-          accountStr,
-          category,
-          notes
-        });
-      }
-
-      return entries;
-    }
-
-    function splitCsvRow(line) {
-      const cols = [];
-      let cur = '';
-      let inside = false;
-      for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (c === '"') {
-          if (inside && line[i+1] === '"') {
-            cur += '"';
-            i++;
-          } else {
-            inside = !inside;
-          }
-        } else if (c === ',' && !inside) {
-          cols.push(cur);
-          cur = '';
-        } else {
-          cur += c;
-        }
-      }
-      cols.push(cur);
-      return cols;
-    }
-
-    // Ingest Parsed Entries into Ledger App State
-    function ingestParsedEntries(entries) {
-      let importedCount = 0;
-
-      entries.forEach(entry => {
-        // Find matching card by alias
-        let matchedCard = appState.cards.find(card => {
-          const searchKey = entry.accountStr.toUpperCase();
-          return card.name.toUpperCase().includes(searchKey) ||
-                 card.aliases.some(alias => searchKey.includes(alias.toUpperCase()) || alias.toUpperCase().includes(searchKey));
-        });
-
-        if (!matchedCard) {
-          matchedCard = appState.cards[0]; // Fallback to first active card
-        }
-
-        if (entry.isCredit) {
-          const exists = appState.credits.some(c => c.fingerprint === entry.fingerprint);
-          if (!exists) {
-            appState.credits.push({
-              id: 'cred_' + Math.random().toString(36).substr(2, 9),
-              cardId: matchedCard.id,
-              dateStr: entry.dateStr,
-              timeStr: entry.timeStr,
-              place: entry.place,
-              amountPaise: entry.amountPaise,
-              category: entry.category,
-              notes: entry.notes,
-              fingerprint: entry.fingerprint
-            });
-            importedCount++;
-          }
-        } else {
-          const exists = appState.spends.some(s => s.fingerprint === entry.fingerprint);
-          if (!exists) {
-            appState.spends.push({
-              id: 'spd_' + Math.random().toString(36).substr(2, 9),
-              cardId: matchedCard.id,
-              dateStr: entry.dateStr,
-              timeStr: entry.timeStr,
-              place: entry.place,
-              amountPaise: entry.amountPaise,
-              category: entry.category,
-              notes: entry.notes,
-              fingerprint: entry.fingerprint
-            });
-            importedCount++;
-          }
-        }
-      });
-
-      saveLedgerStateToStorage();
-      renderApp();
-      return importedCount;
-    }
-
-    // --- MANUAL & VIRTUAL CSV FILE UPLOADS ---
-    function handleManualCsvUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const text = e.target.result;
-          const parsed = parseAxioCsvText(text);
-          const count = ingestParsedEntries(parsed);
-          showToast(`Successfully imported ${count} new transactions!`, 'success');
-        } catch (err) {
-          showToast(`CSV Parsing Error: ${err.message}`, 'error');
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function simulateDropSampleCsv() {
-      const sampleCsv = `DATE,TIME,PLACE,AMOUNT,DR/CR,ACCOUNT,EXPENSE,CATEGORY,TAGS,NOTE
-2026-11-01,14:20,"Titan Watch Store",14999.00,DR,SBI-TITAN,Shopping,Luxury,Retail,"Annual Gift"
-2026-11-03,10:15,"CRED Bill Payment",14999.00,CR,SBI-TITAN,Payment,Payoff,CRED,"Full Payoff"
-2026-11-05,18:45,"Amazon.in Electronics",3499.50,DR,ICICI-APAY,Electronics,Online,Gadgets,"Earbuds"
-2026-11-08,09:30,"Amazon Refund",3499.50,CR,ICICI-APAY,Refund,E-Commerce,Return,"Returned defective unit"
-2026-11-12,21:10,"Swiggy Gourmet",850.00,DR,ONECARD,Food,Dining,Food,"Weekend dinner"
-POWERED BY axio`;
-
-      try {
-        const parsed = parseAxioCsvText(sampleCsv);
-        const count = ingestParsedEntries(parsed);
-        showToast(`Virtual Drive Ingested ${count} transactions!`, 'success');
-      } catch (err) {
-        showToast(`Simulation Error: ${err.message}`, 'error');
-      }
-    }
-
-    // --- SUBSET-SUM SMART BUNDLE MATCHING ALGORITHM ---
-    function solveSubsetSum(items, targetPaise) {
-      // items = array of { id, amountPaise, label }
-      const results = [];
-      
-      function search(index, currentSum, currentCombo) {
-        if (currentSum === targetPaise) {
-          results.push([...currentCombo]);
-          return;
-        }
-        if (currentSum > targetPaise || index >= items.length || results.length >= 5) return;
-
-        // Include current item
-        currentCombo.push(items[index]);
-        search(index + 1, currentSum + items[index].amountPaise, currentCombo);
-        currentCombo.pop();
-
-        // Exclude current item
-        search(index + 1, currentSum, currentCombo);
-      }
-
-      search(0, 0, []);
-      return results;
-    }
-
-    function openSubsetSumModal() {
-      const modal = document.getElementById('subsetSumModal');
-      const select = document.getElementById('bundleCardSelect');
-      select.innerHTML = appState.cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      document.getElementById('bundleResultsContainer').classList.add('hidden');
-      modal.classList.remove('hidden');
-    }
-
-    function closeSubsetSumModal() {
-      document.getElementById('subsetSumModal').classList.add('hidden');
-    }
-
-    function executeSubsetSumSolverUI() {
-      const cardId = document.getElementById('bundleCardSelect').value;
-      const targetPaise = parseToPaise(document.getElementById('bundleTargetAmount').value);
-      const container = document.getElementById('bundleResultsContainer');
-
-      if (targetPaise <= 0) {
-        showToast("Please enter a valid target amount.", "error");
-        return;
-      }
-
-      // Collect unlinked spends for this card
-      const unlinkedSpends = appState.spends.filter(s => {
-        if (s.cardId !== cardId) return false;
-        const linkedSum = appState.links.filter(l => l.spendId === s.id).reduce((acc, l) => acc + l.amountPaise, 0);
-        return s.amountPaise - linkedSum > 0;
-      }).map(s => {
-        const linkedSum = appState.links.filter(l => l.spendId === s.id).reduce((acc, l) => acc + l.amountPaise, 0);
-        return {
-          id: s.id,
-          amountPaise: s.amountPaise - linkedSum,
-          label: `${s.dateStr} - ${s.place} (${formatPaise(s.amountPaise - linkedSum)})`
-        };
-      });
-
-      const solutions = solveSubsetSum(unlinkedSpends, targetPaise);
-
-      container.classList.remove('hidden');
-      if (solutions.length === 0) {
-        container.innerHTML = `<p class="text-xs text-amber-700 font-semibold">No exact combination of unlinked spends matched ${formatPaise(targetPaise)}.</p>`;
-      } else {
-        container.innerHTML = `
-          <h4 class="font-bold text-xs text-[#141413]">Found ${solutions.length} Matching Combination(s):</h4>
-          ${solutions.map((combo, idx) => `
-            <div class="p-2 bg-white rounded border border-[#E6E4DD] space-y-1">
-              <div class="font-semibold text-xs text-[#2D6A4F]">Bundle Option #${idx + 1} (${combo.length} items)</div>
-              <ul class="list-disc list-inside text-[11px] text-[#6E6D6A]">
-                ${combo.map(item => `<li>${item.label}</li>`).join('')}
-              </ul>
-            </div>
-          `).join('')}
-        `;
-      }
-    }
-
-    // --- RECONCILIATION & UNLINKING ENGINE ---
-    function openLinkDialog(spendId) {
-      const spend = appState.spends.find(s => s.id === spendId);
-      if (!spend) return;
-
-      const card = appState.cards.find(c => c.id === spend.cardId);
-      const linkedPaise = appState.links.filter(l => l.spendId === spendId).reduce((acc, l) => acc + l.amountPaise, 0);
-      const remainingPaise = spend.amountPaise - linkedPaise;
-
-      // Available unlinked credits for this card
-      const availableCredits = appState.credits.filter(c => {
-        if (c.cardId !== spend.cardId) return false;
-        const usedPaise = appState.links.filter(l => l.creditId === c.id).reduce((acc, l) => acc + l.amountPaise, 0);
-        return c.amountPaise - usedPaise > 0;
-      });
-
-      const content = document.getElementById('linkModalContent');
-      content.innerHTML = `
-        <div class="p-3 bg-[#FAF9F6] rounded-lg border border-[#E6E4DD] space-y-1">
-          <div class="font-bold text-[#141413]">${spend.place}</div>
-          <div class="text-[#6E6D6A]">Card: ${card ? card.name : 'Unknown'} | Original: ${formatPaise(spend.amountPaise)}</div>
-          <div class="text-xs font-semibold text-red-700">Remaining Unpaid Due: ${formatPaise(remainingPaise)}</div>
-        </div>
-
-        ${availableCredits.length > 0 ? `
-          <div>
-            <label class="block font-semibold text-[#141413] mb-1">Select Unlinked Credit / Payoff Entry</label>
-            <select id="linkCreditSelect" class="w-full text-xs rounded-md border border-[#E6E4DD] bg-[#FAF9F6] p-2 font-medium text-[#141413]">
-              ${availableCredits.map(c => {
-                const usedPaise = appState.links.filter(l => l.creditId === c.id).reduce((acc, l) => acc + l.amountPaise, 0);
-                const avail = c.amountPaise - usedPaise;
-                return `<option value="${c.id}">${c.dateStr} - ${c.place} (Available: ${formatPaise(avail)})</option>`;
-              }).join('')}
-            </select>
-          </div>
-          <button onclick="confirmLinkCredit('${spendId}')" class="w-full py-2 bg-[#141413] text-white font-semibold rounded-md hover:bg-black transition">
-            Apply Selected Credit to Spend
-          </button>
-        ` : `
-          <p class="text-[11px] text-[#6E6D6A] italic">No unlinked credits currently available for this card.</p>
-        `}
-
-        <div class="pt-3 border-t border-[#E6E4DD]">
-          <label class="block font-semibold text-[#141413] mb-1">1-Click Shortfall Waiver</label>
-          <p class="text-[11px] text-[#6E6D6A] mb-2">Waive minor balance differences (interest/roundoff adjustments) down to ₹0.</p>
-          <button onclick="confirmShortfallWaiver('${spendId}', ${remainingPaise})" class="w-full py-2 bg-indigo-50 border border-indigo-200 text-indigo-800 font-semibold rounded-md hover:bg-indigo-100 transition">
-            Waive Remaining ${formatPaise(remainingPaise)} Shortfall
-          </button>
-        </div>
-      `;
-
-      document.getElementById('linkModal').classList.remove('hidden');
-    }
-
-    function closeLinkModal() {
-      document.getElementById('linkModal').classList.add('hidden');
-    }
-
-    function confirmLinkCredit(spendId) {
-      const creditId = document.getElementById('linkCreditSelect').value;
-      const spend = appState.spends.find(s => s.id === spendId);
-      const credit = appState.credits.find(c => c.id === creditId);
-      if (!spend || !credit) return;
-
-      const spendLinkedPaise = appState.links.filter(l => l.spendId === spendId).reduce((acc, l) => acc + l.amountPaise, 0);
-      const spendAvailPaise = spend.amountPaise - spendLinkedPaise;
-
-      const creditUsedPaise = appState.links.filter(l => l.creditId === creditId).reduce((acc, l) => acc + l.amountPaise, 0);
-      const creditAvailPaise = credit.amountPaise - creditUsedPaise;
-
-      const linkPaise = Math.min(spendAvailPaise, creditAvailPaise);
-
-      appState.links.push({
-        id: 'lnk_' + Math.random().toString(36).substr(2, 9),
-        spendId,
-        creditId,
-        amountPaise: linkPaise,
-        isShortfallWaiver: false
-      });
-
-      saveLedgerStateToStorage();
-      closeLinkModal();
-      renderApp();
-      showToast(`Linked ${formatPaise(linkPaise)} successfully!`, 'success');
-    }
-
-    function confirmShortfallWaiver(spendId, amountPaise) {
-      appState.links.push({
-        id: 'lnk_' + Math.random().toString(36).substr(2, 9),
-        spendId,
-        creditId: null,
-        amountPaise,
-        isShortfallWaiver: true
-      });
-
-      saveLedgerStateToStorage();
-      closeLinkModal();
-      renderApp();
-      showToast(`Shortfall waiver of ${formatPaise(amountPaise)} applied!`, 'success');
-    }
-
-    function unlinkSpend(spendId) {
-      appState.links = appState.links.filter(l => l.spendId !== spendId);
-      saveLedgerStateToStorage();
-      renderApp();
-      showToast('Transaction unlinked and balance restored.', 'info');
-    }
-
-    // --- TWO-STEP RESET ALL ENTRIES CONFIRMATION ---
-    function promptResetEntries() {
-      const container = document.getElementById('resetBtnContainer');
-      container.innerHTML = `
-        <div class="flex items-center space-x-1.5 animate-fade-in">
-          <button onclick="executeResetEntriesConfirmed()" class="px-2.5 py-1 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-700 shadow">
-            Confirm Clear
-          </button>
-          <button onclick="cancelResetEntriesPrompt()" class="px-2 py-1 bg-[#FAF9F6] text-[#141413] border border-[#E6E4DD] text-xs rounded hover:bg-[#E6E4DD]">
-            Cancel
-          </button>
-        </div>
-      `;
-    }
-
-    function cancelResetEntriesPrompt() {
-      const container = document.getElementById('resetBtnContainer');
-      container.innerHTML = `
-        <button onclick="promptResetEntries()" class="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 rounded-md font-semibold transition">
-          Reset All Entries
-        </button>
-      `;
-    }
-
-    function executeResetEntriesConfirmed() {
-      // Strictly clear spends, credits, links, processed files while preserving cards, limits, and OAuth clientId
-      appState.spends = [];
-      appState.credits = [];
-      appState.links = [];
-      appState.processedFiles = [];
-      
-      saveLedgerStateToStorage();
-      cancelResetEntriesPrompt();
-      closeDriveModal();
-      renderApp();
-      showToast('Ledger entries cleared while preserving card portfolio and OAuth Client ID.', 'info');
-    }
-
-    // --- CARD MANAGER MODAL & ARCHIVE GUARDRAILS ---
-    function openCardModal(cardId = null) {
-      const modal = document.getElementById('cardModal');
-      const title = document.getElementById('cardModalTitle');
-      const form = document.getElementById('cardForm');
-      
-      form.reset();
-      
-      if (cardId) {
-        const card = appState.cards.find(c => c.id === cardId);
-        if (card) {
-          title.textContent = "Edit Credit Card";
-          document.getElementById('cardFormId').value = card.id;
-          document.getElementById('cardFormName').value = card.name;
-          document.getElementById('cardFormLimit').value = Math.round(card.limitPaise / 100);
-          document.getElementById('cardFormColor').value = card.color || '#141413';
-          document.getElementById('cardFormStmtDay').value = card.stmtDay;
-          document.getElementById('cardFormDueDay').value = card.dueDay;
-          document.getElementById('cardFormAliases').value = (card.aliases || []).join(', ');
-        }
-      } else {
-        title.textContent = "Add Credit Card";
-        document.getElementById('cardFormId').value = '';
-      }
-
-      modal.classList.remove('hidden');
-    }
-
-    function closeCardModal() {
-      document.getElementById('cardModal').classList.add('hidden');
-    }
-
-    function handleCardFormSubmit(e) {
-      e.preventDefault();
-      const cardId = document.getElementById('cardFormId').value;
-      const name = document.getElementById('cardFormName').value.trim();
-      const limitPaise = parseToPaise(document.getElementById('cardFormLimit').value);
-      const color = document.getElementById('cardFormColor').value;
-      const stmtDay = parseInt(document.getElementById('cardFormStmtDay').value, 10);
-      const dueDay = parseInt(document.getElementById('cardFormDueDay').value, 10);
-      const aliasesStr = document.getElementById('cardFormAliases').value;
-      const aliases = aliasesStr.split(',').map(a => a.trim()).filter(Boolean);
-
-      if (cardId) {
-        // Edit existing card
-        const card = appState.cards.find(c => c.id === cardId);
-        if (card) {
-          card.name = name;
-          card.limitPaise = limitPaise;
-          card.color = color;
-          card.stmtDay = stmtDay;
-          card.dueDay = dueDay;
-          card.aliases = aliases;
-        }
-      } else {
-        // Create new card
-        appState.cards.push({
-          id: 'card_' + Math.random().toString(36).substr(2, 9),
-          name,
-          limitPaise,
-          stmtDay,
-          dueDay,
-          aliases,
-          color,
-          isArchived: false
-        });
-      }
-
-      saveLedgerStateToStorage();
-      closeCardModal();
-      renderApp();
-      showToast('Card updated successfully!', 'success');
-    }
-
-    function archiveCard(cardId) {
-      const metrics = calculateCardMetrics(cardId);
-      
-      // STRICT GUARDRAIL: Cannot archive if netDue !== 0 or unlinked credits > 0
-      if (metrics.netDuePaise !== 0) {
-        showToast(`Cannot archive card with outstanding net due balance (${formatPaise(metrics.netDuePaise)}).`, 'error');
-        return;
-      }
-      if (metrics.unlinkedCreditsPaise > 0) {
-        showToast(`Cannot archive card with unlinked credits (${formatPaise(metrics.unlinkedCreditsPaise)}).`, 'error');
-        return;
-      }
-
-      const card = appState.cards.find(c => c.id === cardId);
-      if (card) {
-        card.isArchived = true;
-        saveLedgerStateToStorage();
-        renderApp();
-        showToast(`Card "${card.name}" archived successfully.`, 'info');
-      }
-    }
-
-    // --- DRIVE SIMULATOR & MODAL CONTROLS ---
-    function openDriveModal() {
-      document.getElementById('driveModal').classList.remove('hidden');
-    }
-    function closeDriveModal() {
-      document.getElementById('driveModal').classList.add('hidden');
-    }
-
-    function toggleVirtualDriveMode() {
-      driveConfig.isVirtualMode = !driveConfig.isVirtualMode;
-      localStorage.setItem(STORAGE_KEY_VIRTUAL_MODE, driveConfig.isVirtualMode.toString());
-      updateVirtualModeUI();
-      showToast(`Drive mode switched to ${driveConfig.isVirtualMode ? 'Virtual Simulator' : 'Live OAuth'}`, 'info');
-    }
-
-    function updateVirtualModeUI() {
-      const badgeText = document.getElementById('virtualText');
-      const dot = document.getElementById('virtualDot');
-      if (driveConfig.isVirtualMode) {
-        badgeText.textContent = 'Drive: Virtual';
-        dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
-      } else {
-        badgeText.textContent = 'Drive: Live OAuth';
-        dot.className = 'w-2 h-2 rounded-full bg-green-500';
-      }
-    }
-
-    function initiateDriveAuth() {
-      if (!driveConfig.clientId) {
-        showToast('Please enter your Google OAuth Client ID before connecting.', 'error');
-        return;
-      }
-
-      if (typeof google === 'undefined' || !google.accounts) {
-        showToast('Google GIS script loading... please try again in a moment.', 'error');
-        return;
-      }
-
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: driveConfig.clientId,
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        callback: (response) => {
-          if (response.access_token) {
-            driveConfig.accessToken = response.access_token;
-            driveConfig.isVirtualMode = false;
-            localStorage.setItem(STORAGE_KEY_VIRTUAL_MODE, 'false');
-            updateVirtualModeUI();
-            showToast('Google Drive OAuth Connected Successfully!', 'success');
-            closeDriveModal();
-          }
-        },
-      });
-      client.requestAccessToken();
-    }
-
-    // --- MAIN UI RENDER ENGINE ---
-    function renderApp() {
-      // 1. Render Top Summary Metrics
-      let totalNetDuePaise = 0;
-      let totalLimitPaise = 0;
-      let totalUnlinkedCreditsPaise = 0;
-      let totalUnlinkedCount = 0;
-      let totalShortfallWaiversPaise = 0;
-
-      appState.cards.filter(c => !c.isArchived).forEach(card => {
-        const m = calculateCardMetrics(card.id);
-        totalNetDuePaise += m.netDuePaise;
-        totalLimitPaise += card.limitPaise;
-        totalUnlinkedCreditsPaise += m.unlinkedCreditsPaise;
-      });
-
-      totalUnlinkedCount = appState.credits.filter(c => {
-        const linkedSum = appState.links.filter(l => l.creditId === c.id).reduce((acc, l) => acc + l.amountPaise, 0);
-        return c.amountPaise - linkedSum > 0;
-      }).length;
-
-      totalShortfallWaiversPaise = appState.links.filter(l => l.isShortfallWaiver).reduce((acc, l) => acc + l.amountPaise, 0);
-
-      const totalAvailPaise = totalLimitPaise - totalNetDuePaise;
-
-      document.getElementById('metricNetDue').textContent = formatPaise(totalNetDuePaise);
-      document.getElementById('metricCreditAvailable').textContent = formatPaise(totalAvailPaise);
-      document.getElementById('metricTotalLimitSub').textContent = `Out of ${formatPaise(totalLimitPaise)} total limit`;
-      document.getElementById('metricUnlinkedCredits').textContent = formatPaise(totalUnlinkedCreditsPaise);
-      document.getElementById('metricUnlinkedCount').textContent = `${totalUnlinkedCount} unassigned payoff/refund entries`;
-      document.getElementById('metricShortfallWaivers').textContent = formatPaise(totalShortfallWaiversPaise);
-
-      // 2. Populate Card Filter Select
-      const cardSelect = document.getElementById('filterCardSelect');
-      const currentSelectedCard = cardSelect.value;
-      cardSelect.innerHTML = `<option value="ALL">All Credit Cards</option>` +
-        appState.cards.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      cardSelect.value = currentSelectedCard || 'ALL';
-
-      // 3. Render Cards Portfolio Grid
-      const cardsGrid = document.getElementById('cardsGrid');
-      cardsGrid.innerHTML = appState.cards.map(card => {
-        const m = calculateCardMetrics(card.id);
-        const availPaise = card.limitPaise - m.netDuePaise;
-        const pctUsed = Math.min(100, Math.max(0, Math.round((m.netDuePaise / card.limitPaise) * 100)));
-
-        return `
-          <div class="bg-[#FAF9F6] border border-[#E6E4DD] rounded-xl p-4 space-y-3 relative overflow-hidden ${card.isArchived ? 'opacity-60' : ''}">
-            <div class="w-1.5 absolute left-0 top-0 bottom-0" style="background-color: ${card.color || '#141413'};"></div>
-            
-            <div class="flex justify-between items-start pl-1">
-              <div>
-                <h3 class="font-serif font-bold text-base text-[#141413] flex items-center space-x-1.5">
-                  <span>${card.name}</span>
-                  ${card.isArchived ? '<span class="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded uppercase font-sans font-bold">Archived</span>' : ''}
-                </h3>
-                <p class="text-[11px] text-[#6E6D6A]">Stmt: ${card.stmtDay}th | Due: ${card.dueDay}th</p>
-              </div>
-
-              <div class="flex items-center space-x-1">
-                <button onclick="openCardModal('${card.id}')" class="p-1 hover:bg-[#E6E4DD] rounded text-[#6E6D6A] hover:text-[#141413]" title="Edit Card">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                </button>
-                ${!card.isArchived ? `
-                  <button onclick="archiveCard('${card.id}')" class="p-1 hover:bg-red-50 rounded text-[#6E6D6A] hover:text-red-700" title="Archive Card (Requires ₹0 Net Due)">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 012-2h10a2 2 0 012 2M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-                  </button>
-                ` : ''}
-              </div>
-            </div>
-
-            <!-- Card Financial Numbers -->
-            <div class="grid grid-cols-2 gap-2 pl-1 text-xs">
-              <div>
-                <span class="text-[#6E6D6A] text-[10px] uppercase font-semibold">Net Due</span>
-                <div class="font-serif font-bold ${m.netDuePaise > 0 ? 'text-red-700' : 'text-[#2D6A4F]'} tabular-nums">${formatPaise(m.netDuePaise)}</div>
-              </div>
-              <div>
-                <span class="text-[#6E6D6A] text-[10px] uppercase font-semibold">Available</span>
-                <div class="font-serif font-bold text-[#141413] tabular-nums">${formatPaise(availPaise)}</div>
-              </div>
-            </div>
-
-            <!-- Credit Limit Bar -->
-            <div class="space-y-1 pl-1">
-              <div class="flex justify-between text-[10px] text-[#6E6D6A]">
-                <span>Utilized: ${pctUsed}%</span>
-                <span>Limit: ${formatPaise(card.limitPaise)}</span>
-              </div>
-              <div class="w-full h-1.5 bg-[#E6E4DD] rounded-full overflow-hidden">
-                <div class="h-full bg-[#141413] rounded-full" style="width: ${pctUsed}%;"></div>
-              </div>
-            </div>
-
-            <!-- Unlinked Credits Alert -->
-            ${m.unlinkedCreditsPaise > 0 ? `
-              <div class="pl-1 pt-1 flex items-center justify-between text-[11px] text-amber-800 font-semibold bg-amber-50 p-1.5 rounded border border-amber-200">
-                <span>Unlinked Credits: ${formatPaise(m.unlinkedCreditsPaise)}</span>
-                <button onclick="openSubsetSumModal()" class="underline hover:text-amber-950">Match</button>
-              </div>
-            ` : ''}
-          </div>
-        `;
-      }).join('');
-
-      // 4. Render Ledger Transactions Table
-      const cardFilter = document.getElementById('filterCardSelect').value;
-      const typeFilter = document.getElementById('filterTypeSelect').value;
-      const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
-
-      let displayItems = [];
-
-      if (typeFilter !== 'CREDIT' && typeFilter !== 'UNLINKED') {
-        appState.spends.forEach(s => displayItems.push({ ...s, entryType: 'SPEND' }));
-      }
-      if (typeFilter !== 'SPEND') {
-        appState.credits.forEach(c => displayItems.push({ ...c, entryType: 'CREDIT' }));
-      }
-
-      // Apply Filters
-      displayItems = displayItems.filter(item => {
-        if (cardFilter !== 'ALL' && item.cardId !== cardFilter) return false;
-        if (searchVal) {
-          const matchText = `${item.place} ${item.category} ${item.notes} ${item.dateStr}`.toLowerCase();
-          if (!matchText.includes(searchVal)) return false;
-        }
-        if (typeFilter === 'UNLINKED') {
-          if (item.entryType === 'CREDIT') {
-            const linkedSum = appState.links.filter(l => l.creditId === item.id).reduce((acc, l) => acc + l.amountPaise, 0);
-            return item.amountPaise - linkedSum > 0;
-          } else {
-            const linkedSum = appState.links.filter(l => l.spendId === item.id).reduce((acc, l) => acc + l.amountPaise, 0);
-            return item.amountPaise - linkedSum > 0;
-          }
-        }
-        return true;
-      });
-
-      // Sort by date descending
-      displayItems.sort((a, b) => new Date(b.dateStr) - new Date(a.dateStr));
-
-      const tbody = document.getElementById('ledgerTableBody');
-
-      if (displayItems.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" class="text-center py-8 text-[#6E6D6A]">
-              No transactions matching your active filter criteria.
-            </td>
-          </tr>
-        `;
-        return;
-      }
-
-      tbody.innerHTML = displayItems.map(item => {
-        const card = appState.cards.find(c => c.id === item.cardId);
-        const cardName = card ? card.name : 'Unknown Card';
-
-        if (item.entryType === 'SPEND') {
-          const linksForSpend = appState.links.filter(l => l.spendId === item.id);
-          const totalLinkedPaise = linksForSpend.reduce((acc, l) => acc + l.amountPaise, 0);
-          const remainingDuePaise = item.amountPaise - totalLinkedPaise;
-
-          return `
-            <tr class="hover:bg-[#FAF9F6]">
-              <td class="py-3 px-4 font-mono text-[11px] text-[#6E6D6A]">${item.dateStr} <span class="text-[10px] text-gray-400">${item.timeStr || ''}</span></td>
-              <td class="py-3 px-4 font-medium text-[#141413]">${cardName}</td>
-              <td class="py-3 px-4">
-                <div class="font-semibold text-[#141413]">${item.place}</div>
-                ${item.notes ? `<div class="text-[10px] text-[#6E6D6A]">${item.notes}</div>` : ''}
-              </td>
-              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-medium text-[10px]">${item.category}</span></td>
-              <td class="py-3 px-4 text-right font-bold text-red-700 tabular-nums">${formatPaise(item.amountPaise)}</td>
-              <td class="py-3 px-4 text-right font-medium text-[#2D6A4F] tabular-nums">${formatPaise(totalLinkedPaise)}</td>
-              <td class="py-3 px-4 text-right font-bold ${remainingDuePaise > 0 ? 'text-red-700' : 'text-[#2D6A4F]'} tabular-nums">${formatPaise(remainingDuePaise)}</td>
-              <td class="py-3 px-4 text-center">
-                <div class="flex items-center justify-center space-x-1">
-                  ${remainingDuePaise > 0 ? `
-                    <button onclick="openLinkDialog('${item.id}')" class="px-2 py-1 bg-[#141413] text-[#FAF9F6] hover:bg-black rounded text-[10px] font-semibold">
-                      Link / Waive
-                    </button>
-                  ` : `
-                    <button onclick="unlinkSpend('${item.id}')" class="px-2 py-1 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded text-[10px] font-medium" title="Unlink & Restore Balance">
-                      Unlink
-                    </button>
-                  `}
-                </div>
-              </td>
-            </tr>
-          `;
-        } else {
-          // CREDIT ENTRY (Payoff / Refund)
-          const linksForCredit = appState.links.filter(l => l.creditId === item.id);
-          const usedPaise = linksForCredit.reduce((acc, l) => acc + l.amountPaise, 0);
-          const unlinkedPaise = item.amountPaise - usedPaise;
-
-          return `
-            <tr class="hover:bg-[#FAF9F6] bg-green-50/20">
-              <td class="py-3 px-4 font-mono text-[11px] text-[#6E6D6A]">${item.dateStr} <span class="text-[10px] text-gray-400">${item.timeStr || ''}</span></td>
-              <td class="py-3 px-4 font-medium text-[#141413]">${cardName}</td>
-              <td class="py-3 px-4">
-                <div class="font-semibold text-[#2D6A4F] flex items-center space-x-1">
-                  <span>${item.place}</span>
-                  <span class="text-[9px] bg-green-100 text-green-800 px-1 rounded uppercase font-bold">Credit Payoff</span>
-                </div>
-                ${item.notes ? `<div class="text-[10px] text-[#6E6D6A]">${item.notes}</div>` : ''}
-              </td>
-              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-green-100 text-green-800 font-medium text-[10px]">${item.category}</span></td>
-              <td class="py-3 px-4 text-right font-bold text-[#2D6A4F] tabular-nums">+${formatPaise(item.amountPaise)}</td>
-              <td class="py-3 px-4 text-right font-medium text-gray-600 tabular-nums">${formatPaise(usedPaise)}</td>
-              <td class="py-3 px-4 text-right font-bold text-amber-800 tabular-nums">${formatPaise(unlinkedPaise)}</td>
-              <td class="py-3 px-4 text-center">
-                <span class="text-[10px] text-[#6E6D6A] font-medium">${unlinkedPaise > 0 ? 'Unassigned' : 'Fully Applied'}</span>
-              </td>
-            </tr>
-          `;
-        }
-      }).join('');
-    }
-
-    // --- TOAST NOTIFICATIONS ---
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      
-      let bg = 'bg-[#141413] text-white';
-      if (type === 'success') bg = 'bg-[#2D6A4F] text-white';
-      if (type === 'error') bg = 'bg-[#900C3F] text-white';
-
-      toast.className = `${bg} px-4 py-2.5 rounded-lg shadow-lg text-xs font-medium transition duration-300 transform translate-y-2 pointer-events-auto flex items-center space-x-2`;
-      toast.innerHTML = `<span>${message}</span>`;
-
-      container.appendChild(toast);
-      setTimeout(() => toast.classList.remove('translate-y-2'), 10);
-      setTimeout(() => {
-        toast.classList.add('opacity-0');
-        setTimeout(() => toast.remove(), 300);
-      }, 3500);
-    }
-
-    // --- AUTOMATED QA DIAGNOSTIC SUITE RUNNER ---
-    function openQAModal() {
-      document.getElementById('qaModal').classList.remove('hidden');
-      runAllQATests();
-    }
-    function closeQAModal() {
-      document.getElementById('qaModal').classList.add('hidden');
-    }
-
-    function runAllQATests() {
-      const resultsContainer = document.getElementById('qaResultsList');
-      resultsContainer.innerHTML = '';
-
-      const tests = [
-        { id: 1, name: "RFC 4180 CSV Parsing & Quoting", fn: testRfc4180Parsing },
-        { id: 2, name: "Integer-Paise Net Math & Shortfall Waiver", fn: testIntegerPaiseMath },
-        { id: 3, name: "Unlinking Integrity & State Recalculation", fn: testUnlinkingIntegrity },
-        { id: 4, name: "Subset-Sum Bundle Solver Accuracy", fn: testSubsetSumSolver },
-        { id: 5, name: "Card Alias Normalization & Archive Guardrail", fn: testCardAliasAndArchiveGuard },
-        { id: 6, name: "Persistent Client ID Across Resets", fn: testPersistentClientIdAcrossResets },
-        { id: 7, name: "Cross-Device State Merge & Conflict Resolution", fn: testCrossDeviceStateMerge },
-        { id: 8, name: "PWA Data URI Manifest & Service Worker", fn: testPwaManifestAndWorker }
-      ];
-
-      let passedCount = 0;
-
-      tests.forEach(t => {
-        let result = { passed: false, message: '' };
-        try {
-          result = t.fn();
-        } catch (err) {
-          result = { passed: false, message: 'Exception: ' + err.message };
-        }
-
-        if (result.passed) passedCount++;
-
-        const item = document.createElement('div');
-        item.className = `p-3 rounded-lg border flex items-start justify-between ${result.passed ? 'bg-green-50/50 border-green-200' : 'bg-red-50/50 border-red-200'}`;
-        item.innerHTML = `
-          <div>
-            <div class="font-bold text-xs ${result.passed ? 'text-[#2D6A4F]' : 'text-red-800'}">
-              Test #${t.id}: ${t.name}
-            </div>
-            <p class="text-[11px] text-[#6E6D6A] mt-0.5">${result.message}</p>
-          </div>
-          <span class="px-2 py-0.5 text-[10px] font-bold rounded ${result.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-            ${result.passed ? 'PASSED' : 'FAILED'}
-          </span>
-        `;
-        resultsContainer.appendChild(item);
-      });
-
-      const passRatePct = Math.round((passedCount / tests.length) * 100);
-      const scoreBadge = document.getElementById('qaScoreBadge');
-      scoreBadge.textContent = `Pass Rate: ${passRatePct}% (${passedCount}/${tests.length})`;
-      
-      if (passRatePct === 100) {
-        scoreBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-300';
-        document.getElementById('qaSummaryText').textContent = 'All 8 Automated QA Tests Passed (100%)';
-      } else {
-        scoreBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300';
-        document.getElementById('qaSummaryText').textContent = 'Some tests failed. Review output above.';
-      }
-    }
-
-    // --- TEST INDIVIDUAL IMPLEMENTATIONS ---
-    function testRfc4180Parsing() {
-      const csv = `DATE,TIME,PLACE,AMOUNT,DR/CR,ACCOUNT,EXPENSE,CATEGORY,TAGS,NOTE
-2026-10-01,12:00,"Acme Store, Inc.",100.50,DR,SBI-TITAN,Shopping,Retail,Tag,"Quoted, comma inside"
-POWERED BY axio`;
-      const parsed = parseAxioCsvText(csv);
-      if (parsed.length === 1 && parsed[0].place === 'Acme Store, Inc.' && parsed[0].amountPaise === 10050) {
-        return { passed: true, message: 'Successfully parsed quoted commas and integer paise (10050 paise).' };
-      }
-      return { passed: false, message: 'Failed RFC 4180 parsing structure or amount computation.' };
-    }
-
-    function testIntegerPaiseMath() {
-      const p1 = parseToPaise(100.50);
-      const p2 = parseToPaise(49.50);
-      const sumPaise = p1 + p2;
-      if (sumPaise === 15000 && formatPaise(sumPaise) === '₹150.00') {
-        return { passed: true, message: 'Paise integer math avoids floating point rounding errors (15000 paise).' };
-      }
-      return { passed: false, message: 'Paise integer calculation mismatch.' };
-    }
-
-    function testUnlinkingIntegrity() {
-      // Temporary state test
-      const testSpend = { id: 'test_s1', cardId: 'card_sbi_titan', amountPaise: 5000 };
-      const testCredit = { id: 'test_c1', cardId: 'card_sbi_titan', amountPaise: 5000 };
-      const testLink = { id: 'test_l1', spendId: 'test_s1', creditId: 'test_c1', amountPaise: 5000, isShortfallWaiver: false };
-      
-      let links = [testLink];
-      links = links.filter(l => l.spendId !== 'test_s1'); // Unlink logic
-      
-      if (links.length === 0) {
-        return { passed: true, message: 'Unlinking spend completely restores remaining net due balance.' };
-      }
-      return { passed: false, message: 'Failed to unbind link state.' };
-    }
-
-    function testSubsetSumSolver() {
-      const items = [
-        { id: '1', amountPaise: 1000 },
-        { id: '2', amountPaise: 2000 },
-        { id: '3', amountPaise: 3000 }
-      ];
-      const solutions = solveSubsetSum(items, 5000);
-      if (solutions.length === 1 && solutions[0].length === 2) {
-        return { passed: true, message: 'Branch-and-bound subset-sum solver correctly matched items (2000 + 3000 = 5000).' };
-      }
-      return { passed: false, message: 'Subset-sum solver failed to discover expected combination.' };
-    }
-
-    function testCardAliasAndArchiveGuard() {
-      const m = calculateCardMetrics('card_sbi_titan');
-      // Archive check logic test
-      const canArchive = (m.netDuePaise === 0 && m.unlinkedCreditsPaise === 0);
-      if (typeof canArchive === 'boolean') {
-        return { passed: true, message: 'Card alias normalization active & archive guardrail strictly enforced.' };
-      }
-      return { passed: false, message: 'Card guardrail validation error.' };
-    }
-
-    function testPersistentClientIdAcrossResets() {
-      const sampleId = 'test-client-id-12345.apps.googleusercontent.com';
-      localStorage.setItem(STORAGE_KEY_CLIENT_ID, sampleId);
-      
-      // Simulate Reset All Entries action
-      const preservedId = localStorage.getItem(STORAGE_KEY_CLIENT_ID);
-      if (preservedId === sampleId) {
-        return { passed: true, message: 'Google OAuth Client ID key "axio_oauth_client_id" is preserved across resets.' };
-      }
-      return { passed: false, message: 'Client ID was unexpectedly wiped.' };
-    }
-
-    function testCrossDeviceStateMerge() {
-      const localTime = Date.now() - 5000;
-      const remoteState = {
-        spends: [{ id: 'rem_1', amountPaise: 1200 }],
-        updatedAt: Date.now()
-      };
-      
-      if (remoteState.updatedAt > localTime && remoteState.spends.length === 1) {
-        return { passed: true, message: 'Timestamp resolution (updatedAt) correctly selects newest non-conflicting remote state.' };
-      }
-      return { passed: false, message: 'State timestamp conflict resolution failed.' };
-    }
-
-    function testPwaManifestAndWorker() {
-      const hasLink = !!document.querySelector('link[rel="manifest"]');
-      const hasSW = 'serviceWorker' in navigator;
-      if (hasLink && hasSW) {
-        return { passed: true, message: 'Data URI Web App Manifest injected & Blob Service Worker supported.' };
-      }
-      return { passed: false, message: 'PWA Manifest injection check failed.' };
-    }
-  </script>
-</body>
-</html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Axio Card Ledger</title><meta name="theme-color" content="#F7F5F0">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<style>
+:root{--bg:#F7F5F0;--sf:#FFF;--st:#EFECE6;--ink:#1C1B18;--mut:#68645E;--bd:#E2DDD4;--due:#C84B31;--ok:#2D6A4F;--warn:#B45309;--ind:#3730A3}
+body{background:var(--bg);color:var(--ink);font-family:Inter,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+.serif{font-family:Fraunces,serif}.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px}
+.btn{border:1px solid var(--bd);background:var(--sf);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:500}
+.btn:hover{background:var(--st)}.btn.pri{background:var(--ink);color:#fff;border-color:var(--ink)}.btn.dng{color:var(--due)}
+.inp{border:1px solid var(--bd);background:var(--sf);border-radius:8px;padding:7px 10px;font-size:14px;width:100%}
+.lbl{font-size:12px;color:var(--mut);display:block;margin-bottom:3px}
+.chip{font-size:11px;border-radius:99px;padding:2px 8px;background:var(--st);color:var(--mut)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ind);outline-offset:1px}
+</style></head>
+<body><div id="root"></div>
+
+<script>
+/* ===== PURE CORE (no React) — also used by the QA suite ===== */
+window.AX=(()=>{
+const toPaise=v=>{const n=parseFloat(String(v==null?'':v).replace(/[₹,\s]/g,''));return isNaN(n)?NaN:Math.round(n*100)};
+const inr=p=>(p<0?'-':'')+'₹'+(Math.abs(p)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+const ord=n=>{const m=n%100;if(m>=11&&m<=13)return n+'th';return n+({1:'st',2:'nd',3:'rd'}[n%10]||'th')};
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+function parseRows(text){
+  const first=text.split(/\r?\n/).find(l=>l.trim())||'';
+  const d=first.includes('\t')&&(first.match(/\t/g).length>=(first.match(/,/g)||[]).length)?'\t':',';
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;
+    else if(c===d){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}
+    else f+=c}
+  row.push(f);rows.push(row);
+  return rows.filter(r=>r.some(x=>x.trim()));
+}
+function matchCard(account,cards){
+  const a=(account||'').trim().toLowerCase();if(!a)return null;
+  const names=c=>[c.name,...(c.aliases||[])].map(s=>s.trim().toLowerCase()).filter(Boolean);
+  for(const c of cards)if(names(c).includes(a))return c.id;
+  for(const c of cards)if(names(c).some(n=>n.length>=3&&(a.includes(n)||n.includes(a))))return c.id;
+  return null;
+}
+const fp=t=>[t.date,t.time,t.place,t.paise,t.drcr,t.account].map(x=>String(x).trim().toLowerCase()).join('|');
+function parseAxio(text,cards){
+  const rows=parseRows(text||'');const out=[];const skipped={zero:0,footer:0,neg:0};
+  const hi=rows.findIndex(r=>r.some(c=>/^date$/i.test(c.trim())));if(hi<0)return{rows:out,skipped,error:'No DATE header found'};
+  const H={};rows[hi].forEach((c,i)=>H[c.trim().toUpperCase()]=i);
+  const g=(r,k)=>H[k]==null?'':(r[H[k]]||'').trim();
+  for(const r of rows.slice(hi+1)){
+    if(r.some(c=>/powered by axio/i.test(c))||/axio\.co\.in/i.test(r.join(' '))){skipped.footer++;continue}
+    let raw=g(r,'AMOUNT')||g(r,'EXPENSE')||g(r,'INCOME');let p=toPaise(raw);
+    if(isNaN(p))continue;
+    let drcr=g(r,'DR/CR').toUpperCase()||(g(r,'INCOME')&&!g(r,'EXPENSE')?'CR':'DR');
+    if(p===0){skipped.zero++;continue}
+    if(drcr==='DR'&&p<0){drcr='CR';p=Math.abs(p);skipped.neg++}
+    else if(p<0)p=Math.abs(p);
+    const t={date:g(r,'DATE'),time:g(r,'TIME'),place:g(r,'PLACE'),paise:p,drcr,account:g(r,'ACCOUNT'),category:g(r,'CATEGORY'),tags:g(r,'TAGS'),note:g(r,'NOTE'),memo:''};
+    t.fp=fp(t);t.id=uid();t.cardId=matchCard(t.account,cards);out.push(t);
+  }
+  return{rows:out,skipped};
+}
+const net=(cid,tx)=>tx.filter(t=>t.cardId===cid).reduce((s,t)=>s+(t.drcr==='DR'?t.paise:-t.paise),0);
+function subset(items,target,max=5){ // items:[{id,paise}] -> ids[]|null, exact integer paise
+  const a=items.filter(i=>i.paise>0&&i.paise<=target).sort((x,y)=>y.paise-x.paise);let hit=null,n=0;
+  (function go(i,sum,pick){if(hit||n++>200000)return;if(sum===target){hit=pick.slice();return}
+    if(i>=a.length||pick.length>=max||sum>target)return;
+    pick.push(a[i].id);go(i+1,sum+a[i].paise,pick);pick.pop();go(i+1,sum,pick)})(0,0,[]);
+  return hit;
+}
+const used=(links,key,id)=>links.filter(l=>l[key]===id).reduce((s,l)=>s+l.amountPaise,0);
+const spendLeft=(t,links)=>t.paise-used(links,'spendId',t.id);
+const creditLeft=(t,links)=>t.paise-used(links,'creditId',t.id);
+function autoMatch(cards,tx,links){
+  const nl=[];let all=links.slice();
+  for(const c of cards){
+    for(const cr of tx.filter(t=>t.cardId===c.id&&t.drcr==='CR')){
+      let need=creditLeft(cr,all);if(need<=0)continue;
+      const open=()=>tx.filter(t=>t.cardId===c.id&&t.drcr==='DR'&&spendLeft(t,all)>0).map(t=>({id:t.id,paise:spendLeft(t,all)}));
+      const ids=subset(open(),need);
+      if(ids){for(const id of ids){const amt=open().find(o=>o.id===id).paise;const l={id:uid(),spendId:id,creditId:cr.id,amountPaise:amt};nl.push(l);all=[...all,l]}}
+    }}
+  return nl;
+}
+return{toPaise,inr,ord,uid,parseRows,parseAxio,matchCard,net,subset,autoMatch,spendLeft,creditLeft,fp};
+})();
+</script>
+
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef}=React;const {inr,ord,uid,parseAxio,net,subset,autoMatch,spendLeft,creditLeft,toPaise}=AX;
+const KEY='axio_ledger_state_v1',CFG='axio_ledger_settings_v1';
+const SAMPLE=`DATE\tTIME\tPLACE\tAMOUNT\tDR/CR\tACCOUNT\tEXPENSE\tINCOME\tCATEGORY\tTAGS\tNOTE
+2026-11-01\t10:12\tAMAZON IN\t1499.00\tDR\tICICI credit 8007\t1499.00\t\tShopping\t\t
+2026-11-03\t20:40\tSWIGGY\t640.50\tDR\tICICI credit 8007\t640.50\t\tFood\t\t
+2026-11-05\t07:55\tUBER\t859.50\tDR\tICICI credit 8007\t859.50\t\tTravel\t\t
+2026-11-07\t11:00\tAMAZON REFUND\t-0.50\tDR\tICICI credit 8007\t-0.50\t\t\t\t
+2026-11-08\t11:05\tAMAZON PAY IN G\t0\tDR\tICICI credit 8007\t0\t\t\t\t
+2026-11-10\t09:00\tCRED PAYMENT\t2999.00\tCR\tICICI credit 8007\t\t2999.00\tBills\t\t
+2026-11-12\t18:30\tTITAN\t12500.00\tDR\tSBI Titan RuPay\t12500.00\t\tShopping\t\tmampi to pay
+2026-11-15\t13:10\tONECARD FUEL\t500.00\tDR\tOneCard Metal\t500.00\t\tFuel\t\t
+POWERED BY axio https://axio.co.in`;
+const seedCards=()=>[
+ {id:uid(),name:'ICICI Amazon Pay (8007)',limit:20000000,stmt:11,due:1,color:'#C84B31',aliases:['ICICI credit 8007','ICICI 8007','Amazon Pay','8007'],archived:false},
+ {id:uid(),name:'SBI Titan RuPay',limit:15000000,stmt:22,due:12,color:'#2D6A4F',aliases:['SBI Titan','Titan RuPay'],archived:false},
+ {id:uid(),name:'OneCard Metal',limit:30000000,stmt:3,due:23,color:'#3730A3',aliases:['OneCard','One Card Metal'],archived:false}];
+const load=()=>{try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.cards)return s}catch(e){}return{cards:seedCards(),txns:[],links:[],processed:[],updatedAt:0}};
+const dl=(name,txt,type)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;a.click()};
+const Amt=({p,c,cls=''})=><span className={'mono '+cls} style={{color:c}}>{inr(p)}</span>;
+const Modal=({title,onClose,children})=><div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{background:'rgba(28,27,24,.45)'}} onClick={onClose}>
+ <div className="card w-full sm:max-w-lg max-h-[90vh] overflow-auto p-5" onClick={e=>e.stopPropagation()}>
+ <div className="flex justify-between items-center mb-3"><h3 className="serif text-xl font-bold">{title}</h3><button className="btn" onClick={onClose}>Close</button></div>{children}</div></div>;
+
+function QA(){
+ const t=[
+  ['Parsing: TSV + zero/footer skip + negative DR → CR',()=>{const r=AX.parseAxio(SAMPLE,[]);const rev=r.rows.find(x=>x.place==='AMAZON REFUND');
+    const csv=AX.parseAxio('DATE,PLACE,AMOUNT,DR/CR,ACCOUNT\n2026-01-01,"A, B",10.5,DR,X\nPOWERED BY axio https://axio.co.in',[]);
+    return[r.rows.length===7&&r.skipped.zero===1&&r.skipped.footer===1&&rev&&rev.drcr==='CR'&&rev.paise===50&&csv.rows.length===1&&csv.rows[0].place==='A, B'&&csv.rows[0].paise===1050,`rows=${r.rows.length}, skipped=${JSON.stringify(r.skipped)}`]}],
+  ['Alias: "ICICI credit 8007" → ICICI Amazon Pay',()=>{const c=seedCards();const id=AX.matchCard('ICICI credit 8007',c);return[id===c[0].id&&AX.matchCard('icici 8007 ',c)===c[0].id&&AX.matchCard('Nope',c)===null,'exact + substring']}],
+  ['Ordinals: 1st 2nd 3rd 11th 22nd',()=>{const o=[1,2,3,11,21,22,23,12,13].map(ord);return[o.join()==='1st,2nd,3rd,11th,21st,22nd,23rd,12th,13th',o.join(' ')]}],
+  ['Subset-sum in integer paise',()=>{const s=AX.subset([{id:'a',paise:64050},{id:'b',paise:85950},{id:'c',paise:149900}],150000);const m=AX.subset([{id:'a',paise:10}],99);return[s&&s.length===2&&s.includes('a')&&s.includes('b')&&m===null,JSON.stringify(s)]}],
+  ['Signed net balance is not clamped',()=>{const tx=[{cardId:'1',drcr:'DR',paise:10000},{cardId:'1',drcr:'CR',paise:19000}];const n=AX.net('1',tx);return[n===-9000&&AX.inr(n)==='-₹90.00'&&AX.inr(15000000)==='₹1,50,000.00',AX.inr(n)]}],
+  ['Dedupe fingerprint stable',()=>{const a=AX.parseAxio(SAMPLE,[]).rows,b=AX.parseAxio(SAMPLE,[]).rows;return[a.every((x,i)=>x.fp===b[i].fp),'re-import yields same fingerprints']}]
+ ].map(([n,f])=>{try{const[ok,d]=f();return{n,ok:!!ok,d}}catch(e){return{n,ok:false,d:String(e)}}});
+ return <div>{t.map(x=><div key={x.n} className="flex gap-2 py-2 border-b" style={{borderColor:'var(--bd)'}}><b style={{color:x.ok?'var(--ok)':'var(--due)'}}>{x.ok?'PASS':'FAIL'}</b><div><div className="text-sm">{x.n}</div><div className="text-xs mono" style={{color:'var(--mut)'}}>{x.d}</div></div></div>)}</div>;
+}
+
+function CardForm({card,onSave,onClose}){
+ const [f,setF]=useState(card?{...card,limitR:card.limit/100,al:card.aliases.join(', ')}:{name:'',limitR:100000,stmt:1,due:20,color:'#C84B31',al:''});
+ const u=k=>e=>setF({...f,[k]:e.target.value});
+ const day=v=>Math.min(31,Math.max(1,parseInt(v)||1));
+ return <Modal title={card?'Edit card':'Add card'} onClose={onClose}><div className="grid grid-cols-2 gap-3">
+  <div className="col-span-2"><label className="lbl">Card name</label><input className="inp" value={f.name} onChange={u('name')}/></div>
+  <div><label className="lbl">Credit limit (₹)</label><input className="inp mono" type="number" value={f.limitR} onChange={u('limitR')}/></div>
+  <div><label className="lbl">Accent colour</label><input className="inp" type="color" value={f.color} onChange={u('color')}/></div>
+  <div><label className="lbl">Statement day ({ord(day(f.stmt))})</label><input className="inp" type="number" min="1" max="31" value={f.stmt} onChange={u('stmt')}/></div>
+  <div><label className="lbl">Due day ({ord(day(f.due))})</label><input className="inp" type="number" min="1" max="31" value={f.due} onChange={u('due')}/></div>
+  <div className="col-span-2"><label className="lbl">Axio account aliases (comma-separated)</label><input className="inp" value={f.al} onChange={u('al')}/></div>
+  <button className="btn pri col-span-2" disabled={!f.name.trim()} onClick={()=>onSave({id:card?.id||uid(),name:f.name.trim(),limit:toPaise(f.limitR)||0,stmt:day(f.stmt),due:day(f.due),color:f.color,aliases:f.al.split(',').map(s=>s.trim()).filter(Boolean),archived:!!card?.archived})}>Save card</button></div></Modal>;
+}
+
+function MatchDrawer({credit,s,onLink,onClose}){
+ const open=s.txns.filter(t=>t.cardId===credit.cardId&&t.drcr==='DR'&&spendLeft(t,s.links)>0);
+ const left=creditLeft(credit,s.links);
+ const bundle=subset(open.map(t=>({id:t.id,paise:spendLeft(t,s.links)})),left);
+ return <Modal title={`Match ${inr(left)} payoff`} onClose={onClose}>
+  {bundle&&<div className="card p-3 mb-3" style={{background:'var(--st)'}}><div className="text-sm mb-2">Exact bundle: {bundle.length} spend(s) add up to this payoff.</div>
+   <button className="btn pri" onClick={()=>{onLink(bundle.map(id=>({spendId:id,creditId:credit.id,amountPaise:spendLeft(s.txns.find(t=>t.id===id),s.links)})));onClose()}}>Link bundle</button></div>}
+  {open.length===0&&<p className="text-sm" style={{color:'var(--mut)'}}>No open spends on this card.</p>}
+  {open.map(t=><div key={t.id} className="flex justify-between items-center py-2 border-b gap-2" style={{borderColor:'var(--bd)'}}>
+   <div className="text-sm min-w-0"><div className="truncate">{t.place}</div><div className="text-xs" style={{color:'var(--mut)'}}>{t.date}</div></div>
+   <Amt p={spendLeft(t,s.links)}/><button className="btn" onClick={()=>{onLink([{spendId:t.id,creditId:credit.id,amountPaise:Math.min(spendLeft(t,s.links),creditLeft(credit,s.links))}]);onClose()}}>Link</button></div>)}
+ </Modal>;
+}
+
+function App(){
+ const [s,setS]=useState(load);const [filter,setFilter]=useState(null);const [modal,setModal]=useState(null);const [paste,setPaste]=useState('');
+ const [msg,setMsg]=useState('');const [resetArm,setResetArm]=useState(false);
+ const [cfg,setCfg]=useState(()=>{try{return{clientId:'',folder:'Axio Card Exports',poll:5,...JSON.parse(localStorage.getItem(CFG))}}catch(e){return{clientId:'',folder:'Axio Card Exports',poll:5}}});
+ const fileRef=useRef(),restoreRef=useRef();
+ const commit=fn=>setS(p=>{const n={...fn(p),updatedAt:Date.now()};localStorage.setItem(KEY,JSON.stringify(n));return n});
+ const saveCfg=c=>{setCfg(c);localStorage.setItem(CFG,JSON.stringify(c))};
+ const toast=m=>{setMsg(m);setTimeout(()=>setMsg(''),4000)};
+ const active=s.cards.filter(c=>!c.archived);
+ const nets=Object.fromEntries(s.cards.map(c=>[c.id,net(c.id,s.txns)]));
+ const unl=id=>s.txns.filter(t=>t.drcr==='CR'&&(id==null||t.cardId===id)&&creditLeft(t,s.links)>0);
+ const dues=active.reduce((a,c)=>a+Math.max(0,nets[c.id]),0),sur=active.reduce((a,c)=>a+Math.min(0,nets[c.id]),0);
+ const pool=unl().reduce((a,t)=>a+creditLeft(t,s.links),0),lim=active.reduce((a,c)=>a+c.limit,0),util=lim?dues/lim*100:0;
+ const rows=s.txns.filter(t=>!filter||t.cardId===filter).slice().sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+
+ const doImport=text=>{const r=parseAxio(text,s.cards);if(r.error)return toast(r.error);
+  let added=0;commit(p=>{const seen=new Set(p.txns.map(t=>t.fp));const n=r.rows.filter(t=>!seen.has(t.fp)&&seen.add(t.fp));added=n.length;return{...p,txns:[...p.txns,...n]}});
+  setTimeout(()=>toast(`Imported ${added} new · ${r.rows.length-added} duplicates · ${r.skipped.zero} zero-amount · ${r.skipped.footer} footer · ${r.skipped.neg} reversals→credit`),0);};
+ const onFiles=async e=>{for(const f of e.target.files){doImport(await f.text());commit(p=>({...p,processed:[...p.processed,{name:f.name,at:new Date().toISOString()}]}))}e.target.value='';setModal(null)};
+ const saveCard=c=>{commit(p=>{const cards=p.cards.some(x=>x.id===c.id)?p.cards.map(x=>x.id===c.id?c:x):[...p.cards,c];
+   return{...p,cards,txns:p.txns.map(t=>t.cardId&&cards.some(x=>x.id===t.cardId)?t:{...t,cardId:AX.matchCard(t.account,cards)})}});setModal(null)};
+ const archive=c=>{if(nets[c.id]!==0||unl(c.id).length)return toast(`Can't archive ${c.name}: net due must be ₹0.00 and no unlinked credits remain.`);commit(p=>({...p,cards:p.cards.map(x=>x.id===c.id?{...x,archived:true}:x)}));if(filter===c.id)setFilter(null)};
+ const link=ls=>commit(p=>({...p,links:[...p.links,...ls.map(l=>({id:uid(),...l}))]}));
+ const auto=()=>{const nl=autoMatch(active,s.txns,s.links);if(!nl.length)return toast('No exact matches found.');link(nl);toast(`Auto-linked ${nl.length} spend(s).`)};
+ const exportCsv=()=>{const q=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;const nm=Object.fromEntries(s.cards.map(c=>[c.id,c.name]));
+  dl('axio_reconciled.csv',['DATE,TIME,PLACE,AMOUNT,DR/CR,ACCOUNT,CARD,STATUS,REIMBURSEMENT NOTE',...rows.map(t=>[t.date,t.time,t.place,(t.paise/100).toFixed(2),t.drcr,t.account,nm[t.cardId]||'',(t.drcr==='DR'?spendLeft(t,s.links):creditLeft(t,s.links))===0?'settled':'open',t.memo].map(q).join(','))].join('\n'),'text/csv')};
+ const restore=async e=>{try{const j=JSON.parse(await e.target.files[0].text());if(!j.cards||!j.txns)throw 0;commit(()=>({links:[],processed:[],...j}));toast('Backup restored.')}catch(x){toast('That file is not a ledger backup.')}e.target.value=''};
+ const reset=()=>{if(!resetArm){setResetArm(true);setTimeout(()=>setResetArm(false),5000);return}commit(p=>({...p,txns:[],links:[],processed:[]}));setResetArm(false);setFilter(null);toast('Entries cleared. Cards, limits, aliases and Client ID kept.')};
+
+ const kpi=(l,v,c,sub,bar)=><div className="card p-4"><div className="text-xs" style={{color:'var(--mut)'}}>{l}</div><div className="mono text-xl sm:text-2xl mt-1" style={{color:c}}>{v}</div><div className="text-xs mt-1" style={{color:'var(--mut)'}}>{sub}</div>{bar!=null&&<div className="h-1.5 rounded mt-2" style={{background:'var(--st)'}}><div className="h-1.5 rounded" style={{width:Math.min(100,bar)+'%',background:bar>70?'var(--due)':'var(--ok)'}}/></div>}</div>;
+
+ return <div className="max-w-5xl mx-auto px-4 py-5">
+  <header className="flex flex-wrap items-center justify-between gap-3 mb-5">
+   <div><h1 className="serif text-3xl font-bold">Axio Card Ledger</h1><p className="text-sm" style={{color:'var(--mut)'}}>Who owes what on which card, down to the paisa.</p></div>
+   <div className="flex flex-wrap gap-2"><button className="btn pri" onClick={()=>setModal('import')}>Import</button><button className="btn" onClick={auto}>Auto-Match Payoffs</button><button className="btn" onClick={exportCsv}>Export CSV</button>
+    <button className="btn" onClick={()=>setModal('sync')}>Backup &amp; Sync</button><button className="btn" onClick={()=>setModal('qa')}>QA Tests</button></div></header>
+  {msg&&<div className="card p-3 mb-4 text-sm" role="status" style={{borderColor:'var(--ind)'}}>{msg}</div>}
+  <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+   {kpi('Total open dues',inr(dues),'var(--due)',`${active.length} active cards`)}
+   {kpi('Surplus credits',inr(sur),'var(--ind)','Over-refunds, not clamped')}
+   {kpi('Unlinked payoffs pool',inr(pool),'var(--warn)',`${unl().length} unlinked item(s)`)}
+   {kpi('Credit utilisation',util.toFixed(1)+'%','var(--ink)',`of ${inr(lim)}`,util)}</section>
+  <section className="mb-6"><div className="flex justify-between items-center mb-2"><h2 className="serif text-xl font-bold">Cards</h2>
+   <div className="flex gap-2">{filter&&<button className="btn" onClick={()=>setFilter(null)}>Show all cards</button>}<button className="btn" onClick={()=>setModal({card:null})}>Add card</button></div></div>
+   <div className="grid sm:grid-cols-3 gap-3">{active.map(c=>{const n=nets[c.id];const u=unl(c.id).length;
+    return <div key={c.id} className="card p-4 text-left cursor-pointer" style={{borderTop:`4px solid ${c.color}`,outline:filter===c.id?'2px solid var(--ink)':'none'}} onClick={()=>setFilter(filter===c.id?null:c.id)}>
+     <div className="font-semibold text-sm">{c.name}</div>
+     <div className="mono text-lg mt-1" style={{color:n>0?'var(--due)':n<0?'var(--ind)':'var(--ok)'}}>{n>0?'Net due ':n<0?'Surplus ':'Settled '}{inr(n)}</div>
+     <div className="text-xs mt-1" style={{color:'var(--mut)'}}>Limit {inr(c.limit)} · Statement {ord(c.stmt)} · Due {ord(c.due)}</div>
+     {u>0&&<div className="chip mt-2 inline-block" style={{background:'#FEF3C7',color:'var(--warn)'}}>{u} unlinked credit(s)</div>}
+     <div className="flex gap-2 mt-3" onClick={e=>e.stopPropagation()}><button className="btn" onClick={()=>setModal({card:c})}>Edit</button><button className="btn" onClick={()=>archive(c)}>Archive</button></div></div>})}</div></section>
+  <section><h2 className="serif text-xl font-bold mb-2">Ledger {filter&&<span className="chip">{s.cards.find(c=>c.id===filter)?.name}</span>}</h2>
+   {rows.length===0?<div className="card p-6 text-sm" style={{color:'var(--mut)'}}>No transactions yet. Use Import to paste or upload an Axio export.</div>:
+   <div className="card divide-y" style={{borderColor:'var(--bd)'}}>{rows.map(t=>{const cr=t.drcr==='CR';const left=cr?creditLeft(t,s.links):spendLeft(t,s.links);const card=s.cards.find(c=>c.id===t.cardId);
+    return <div key={t.id} className="p-3 flex flex-wrap items-center gap-x-3 gap-y-1" style={{borderColor:'var(--bd)'}}>
+     <div className="flex-1 min-w-[10rem]"><div className="text-sm font-medium">{t.place||'—'}</div>
+      <div className="text-xs" style={{color:'var(--mut)'}}>{t.date} {t.time} · {card?card.name:<b style={{color:'var(--warn)'}}>Unmapped: {t.account||'no account'}</b>}</div></div>
+     {!cr&&<input className="inp !w-40 !text-xs" placeholder="Reimbursement note" value={t.memo} onChange={e=>commit(p=>({...p,txns:p.txns.map(x=>x.id===t.id?{...x,memo:e.target.value}:x)}))}/>}
+     <span className="chip" style={{color:left===0?'var(--ok)':cr?'var(--warn)':'var(--due)'}}>{left===0?'Settled':(cr?'Unlinked ':'Open ')+inr(left)}</span>
+     {cr&&left>0&&card&&<button className="btn" onClick={()=>setModal({match:t.id})}>Match</button>}
+     <Amt p={cr?-t.paise:t.paise} c={cr?'var(--ok)':'var(--ink)'} cls="w-28 text-right"/></div>})}</div>}</section>
+
+  {modal==='import'&&<Modal title="Import Axio export" onClose={()=>setModal(null)}>
+   <input ref={fileRef} type="file" multiple accept=".csv,.tsv,.txt" className="hidden" onChange={onFiles}/>
+   <button className="btn pri mb-3" onClick={()=>fileRef.current.click()}>Choose files (.csv, .tsv, .txt)</button>
+   <label className="lbl">Or paste rows from your clipboard</label><textarea className="inp mono !text-xs" rows="7" value={paste} onChange={e=>setPaste(e.target.value)}/>
+   <div className="flex gap-2 mt-3"><button className="btn pri" disabled={!paste.trim()} onClick={()=>{doImport(paste);setPaste('');setModal(null)}}>Import pasted data</button><button className="btn" onClick={()=>setPaste(SAMPLE)}>Fill with sample</button></div></Modal>}
+  {modal==='qa'&&<Modal title="QA tests" onClose={()=>setModal(null)}><QA/></Modal>}
+  {modal==='sync'&&<Modal title="Backup & sync" onClose={()=>setModal(null)}>
+   <label className="lbl">Google OAuth Client ID (saved on this device)</label><input className="inp mb-2" value={cfg.clientId} onChange={e=>saveCfg({...cfg,clientId:e.target.value})}/>
+   <div className="grid grid-cols-2 gap-2 mb-2"><div><label className="lbl">Drive folder</label><input className="inp" value={cfg.folder} onChange={e=>saveCfg({...cfg,folder:e.target.value})}/></div><div><label className="lbl">Poll every (min)</label><input className="inp" type="number" value={cfg.poll} onChange={e=>saveCfg({...cfg,poll:e.target.value})}/></div></div>
+   <p className="text-xs mb-3" style={{color:'var(--warn)'}}>Settings are stored; the live Drive connection is not part of this build yet.</p>
+   <input ref={restoreRef} type="file" accept=".json" className="hidden" onChange={restore}/>
+   <div className="flex flex-wrap gap-2"><button className="btn" onClick={()=>dl('axio_ledger_state.json',JSON.stringify(s,null,1),'application/json')}>Download JSON backup</button><button className="btn" onClick={()=>restoreRef.current.click()}>Restore JSON</button>
+    <button className="btn dng" onClick={reset}>{resetArm?'Tap again to confirm reset':'Reset All Ledger Entries'}</button></div>
+   {s.processed.length>0&&<div className="mt-4"><div className="text-sm font-semibold mb-1">Safe to delete (already ingested)</div>{s.processed.map((f,i)=><div key={i} className="text-xs mono" style={{color:'var(--mut)'}}>{f.name}</div>)}</div>}</Modal>}
+  {modal&&modal.card!==undefined&&<CardForm card={modal.card} onSave={saveCard} onClose={()=>setModal(null)}/>}
+  {modal&&modal.match&&<MatchDrawer credit={s.txns.find(t=>t.id===modal.match)} s={s} onLink={link} onClose={()=>setModal(null)}/>}
+ </div>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+
+/* PWA: manifest (data URI, PNG icons drawn at runtime) + service worker */
+(()=>{try{
+ const icon=n=>{const c=document.createElement('canvas');c.width=c.height=n;const x=c.getContext('2d');x.fillStyle='#1C1B18';x.fillRect(0,0,n,n);x.fillStyle='#F7F5F0';x.font=`700 ${n*.6}px serif`;x.textAlign='center';x.textBaseline='middle';x.fillText('₹',n/2,n/2+n*.03);return c.toDataURL('image/png')};
+ const base=location.href.split('#')[0].replace(/[^/]*$/,'');
+ const m={name:'Axio Card Ledger',short_name:'Card Ledger',display:'standalone',background_color:'#F7F5F0',theme_color:'#F7F5F0',start_url:base,scope:base,icons:[192,512].map(n=>({src:icon(n),sizes:n+'x'+n,type:'image/png',purpose:'any'}))};
+ const l=document.createElement('link');l.rel='manifest';l.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(m));document.head.appendChild(l);
+ if('serviceWorker'in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}catch(e){}})();
+</script>
+</body></html>
